@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  BOARD_MEMBER
+  CEO
+  EXECUTIVE_MANAGER
+  DEPARTMENT_MANAGER
+  TEAM_LEADER
+  EMPLOYEE
+}
+
+enum BSCPerspective {
+  FINANCIAL
+  CUSTOMER
+  INTERNAL_BUSINESS_PROCESS
+  LEARNING_AND_GROWTH
+}
+
+enum PlanStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  RETURNED_FOR_REVISION
+  APPROVED
+  REJECTED
+  FINAL_APPROVED
+}
+
+enum ApprovalAction {
+  SUBMIT
+  APPROVE
+  REJECT
+  RETURN_FOR_REVISION
+  EDIT
+}
+
+model Department {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  description String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employees    User[]
+  bscPlans     BSCPlan[]
+  teamLeaders  User[] @relation("TeamLeaderDepartment")
+}
+
+model User {
+  id             String    @id @default(uuid())
+  firstName      String
+  lastName       String
+  email          String    @unique
+  password       String
+  role           Role
+  departmentId   String?
+  department     Department? @relation(fields: [departmentId], references: [id])
+  managerId      String?
+  manager        User?     @relation("ReportingHierarchy", fields: [managerId], references: [id])
+  directReports  User[]    @relation("ReportingHierarchy")
+  teamLeaderDepartmentId String?
+  teamLeaderDepartment    Department? @relation("TeamLeaderDepartment", fields: [teamLeaderDepartmentId], references: [id])
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  bscPlans       BSCPlan[]
+  approvals      ApprovalHistory[]
+  notifications  Notification[]
+  comments       PlanComment[]
+  contributions  PlanContributor[]
+}
+
+model BSCPlan {
+  id                String        @id @default(uuid())
+  title             String
+  description       String?
+  perspective       BSCPerspective
+  status            PlanStatus    @default(DRAFT)
+  
+  strategicObjective String
+  kpiName           String
+  kpiFormula        String?
+  measurementUnit   String?
+  baseline          Float         @default(0)
+  target            Float
+  actualResult      Float         @default(0)
+  weight            Float         @default(0)
+  objectiveNumber   String?
+  strategicTheme    String?
+  /// A July-to-June schedule, for example { "July": 10, "August": 12 }.
+  monthlyTargets    Json?
+  planYear          Int?
+  
+  strategicInitiative String?
+  budget            Float         @default(0)
+  startDate         DateTime?
+  endDate           DateTime?
+  
+  version           Int           @default(1)
+  ownerId           String
+  owner             User          @relation(fields: [ownerId], references: [id])
+  departmentId      String?
+  department        Department?   @relation(fields: [departmentId], references: [id])
+  
+  parentPlanId      String?
+  parentPlan        BSCPlan?      @relation("PlanHierarchy", fields: [parentPlanId], references: [id])
+  childPlans        BSCPlan[]     @relation("PlanHierarchy")
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  approvalHistory   ApprovalHistory[]
+  attachments       Attachment[]
+  comments          PlanComment[]
+  versions          PlanVersion[]
+  contributors      PlanContributor[]
+}
+
+model ApprovalHistory {
+  id          String   @id @default(uuid())
+  planId      String
+  plan        BSCPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  reviewerId  String
+  reviewer    User     @relation(fields: [reviewerId], references: [id])
+  action      ApprovalAction
+  comments    String?
+  createdAt   DateTime @default(now())
+}
+
+model PlanVersion {
+  id        String   @id @default(uuid())
+  planId    String
+  plan      BSCPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  version   Int
+  data      Json
+  createdAt DateTime @default(now())
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  planId    String
+  plan      BSCPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  fileName  String
+  filePath  String
+  fileSize  Int
+  mimeType  String
+  createdAt DateTime @default(now())
+}
+
+model PlanComment {
+  id        String   @id @default(uuid())
+  planId    String
+  plan      BSCPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  linkUrl   String?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  userName  String
+  action    String
+  entity    String
+  entityId  String
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model PlanContributor {
+  id               String   @id @default(uuid())
+  planId           String
+  plan             BSCPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  contributionPct  Float    @default(0)
+  role             String?
+  createdAt        DateTime @default(now())
+
+  @@unique([planId, userId])
+}

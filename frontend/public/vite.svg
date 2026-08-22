@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a5f"/>
+      <stop offset="100%" style="stop-color:#2563eb"/>
+    </linearGradient>
+  </defs>
+  <path d="M50 5 L90 20 L90 50 C90 75 70 92 50 98 C30 92 10 75 10 50 L10 20 Z" fill="url(#shieldGrad)" stroke="#1e3a5f" stroke-width="2"/>
+  <path d="M50 15 L80 27 L80 50 C80 70 65 83 50 88 C35 83 20 70 20 50 L20 27 Z" fill="none" stroke="#d4a843" stroke-width="1.5" opacity="0.6"/>
+  <text x="50" y="58" text-anchor="middle" fill="white" font-family="Inter, sans-serif" font-weight="700" font-size="22">BSC</text>
+  <text x="50" y="72" text-anchor="middle" fill="#d4a843" font-family="Inter, sans-serif" font-weight="500" font-size="8" letter-spacing="2">MANAGEMENT</text>
+</svg>
