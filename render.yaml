@@ -2,6 +2,7 @@ services:
   - type: web
     name: bsc-management-api
     runtime: node
+    plan: free
     rootDir: backend
     buildCommand: npm ci && npx prisma generate && npx prisma db push
     startCommand: npm start
