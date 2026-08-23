@@ -6,25 +6,32 @@ async function main() {
   console.log('Seeding database...');
   
   const password = await bcrypt.hash('Password123!', 12);
+  // Seeds are run more than once during development, so use the unique fields
+  // in the schema to update existing records instead of creating duplicates.
+  const upsertUser = ({ data }) => prisma.user.upsert({
+    where: { email: data.email },
+    update: data,
+    create: data,
+  });
   
   const departments = await Promise.all([
-    prisma.department.create({ data: { name: 'Executive Office', description: 'Executive leadership and strategic direction' } }),
-    prisma.department.create({ data: { name: 'Underwriting', description: 'Risk assessment and policy pricing' } }),
-    prisma.department.create({ data: { name: 'Claims', description: 'Claims processing and settlement' } }),
-    prisma.department.create({ data: { name: 'Sales & Marketing', description: 'Business development and marketing' } }),
-    prisma.department.create({ data: { name: 'Finance', description: 'Financial management and reporting' } }),
-    prisma.department.create({ data: { name: 'Human Resources', description: 'People management and development' } }),
-    prisma.department.create({ data: { name: 'IT', description: 'Technology infrastructure and development' } }),
-    prisma.department.create({ data: { name: 'Customer Service', description: 'Customer support and relations' } }),
-    prisma.department.create({ data: { name: 'Actuarial', description: 'Statistical analysis and risk modeling' } }),
-    prisma.department.create({ data: { name: 'Legal & Compliance', description: 'Legal affairs and regulatory compliance' } }),
+    prisma.department.upsert({ where: { name: 'Executive Office' }, update: { description: 'Executive leadership and strategic direction' }, create: { name: 'Executive Office', description: 'Executive leadership and strategic direction' } }),
+    prisma.department.upsert({ where: { name: 'Underwriting' }, update: { description: 'Risk assessment and policy pricing' }, create: { name: 'Underwriting', description: 'Risk assessment and policy pricing' } }),
+    prisma.department.upsert({ where: { name: 'Claims' }, update: { description: 'Claims processing and settlement' }, create: { name: 'Claims', description: 'Claims processing and settlement' } }),
+    prisma.department.upsert({ where: { name: 'Sales & Marketing' }, update: { description: 'Business development and marketing' }, create: { name: 'Sales & Marketing', description: 'Business development and marketing' } }),
+    prisma.department.upsert({ where: { name: 'Finance' }, update: { description: 'Financial management and reporting' }, create: { name: 'Finance', description: 'Financial management and reporting' } }),
+    prisma.department.upsert({ where: { name: 'Human Resources' }, update: { description: 'People management and development' }, create: { name: 'Human Resources', description: 'People management and development' } }),
+    prisma.department.upsert({ where: { name: 'IT' }, update: { description: 'Technology infrastructure and development' }, create: { name: 'IT', description: 'Technology infrastructure and development' } }),
+    prisma.department.upsert({ where: { name: 'Customer Service' }, update: { description: 'Customer support and relations' }, create: { name: 'Customer Service', description: 'Customer support and relations' } }),
+    prisma.department.upsert({ where: { name: 'Actuarial' }, update: { description: 'Statistical analysis and risk modeling' }, create: { name: 'Actuarial', description: 'Statistical analysis and risk modeling' } }),
+    prisma.department.upsert({ where: { name: 'Legal & Compliance' }, update: { description: 'Legal affairs and regulatory compliance' }, create: { name: 'Legal & Compliance', description: 'Legal affairs and regulatory compliance' } }),
   ]);
 
-  const board = await prisma.user.create({
+  const board = await upsertUser({
     data: { firstName: 'Alemayehu', lastName: 'Bekele', email: 'board@insurance.com', password, role: 'BOARD_MEMBER' }
   });
 
-  const ceo = await prisma.user.create({
+  const ceo = await upsertUser({
     data: { firstName: 'Tigist', lastName: 'Mulugeta', email: 'ceo@insurance.com', password, role: 'CEO', departmentId: departments[0].id, managerId: board.id }
   });
 
@@ -39,7 +46,7 @@ async function main() {
   ];
   
   for (const exec of executiveData) {
-    const u = await prisma.user.create({
+    const u = await upsertUser({
       data: { firstName: exec.firstName, lastName: exec.lastName, email: exec.email, password, role: 'EXECUTIVE_MANAGER', departmentId: departments[exec.deptIdx].id, managerId: ceo.id }
     });
     execManagers.push(u);
@@ -59,46 +66,29 @@ async function main() {
   ];
   
   for (const mgr of deptManagerData) {
-    const u = await prisma.user.create({
+    const u = await upsertUser({
       data: { firstName: mgr.firstName, lastName: mgr.lastName, email: mgr.email, password, role: 'DEPARTMENT_MANAGER', departmentId: departments[mgr.deptIdx].id, managerId: execManagers[Math.min(mgr.deptIdx - 1, execManagers.length - 1)].id }
     });
     deptManagers.push(u);
   }
 
-  const teamLeaders = [];
-  const teamLeaderData = [
-    { firstName: 'Bereket', lastName: 'Sintayehu', email: 'tl.uw1@insurance.com', deptIdx: 1 },
-    { firstName: 'Genet', lastName: 'Adebo', email: 'tl.uw2@insurance.com', deptIdx: 1 },
-    { firstName: 'Solomon', lastName: 'Teshome', email: 'tl.claims1@insurance.com', deptIdx: 2 },
-    { firstName: 'Betty', lastName: 'Mekonnen', email: 'tl.sales1@insurance.com', deptIdx: 3 },
-    { firstName: 'Robel', lastName: 'Demissie', email: 'tl.cs1@insurance.com', deptIdx: 7 },
-    { firstName: 'Tsion', lastName: 'Girmay', email: 'tl.finance1@insurance.com', deptIdx: 4 },
-  ];
-  
-  for (const tl of teamLeaderData) {
-    const u = await prisma.user.create({
-      data: { firstName: tl.firstName, lastName: tl.lastName, email: tl.email, password, role: 'TEAM_LEADER', departmentId: departments[tl.deptIdx].id, managerId: deptManagers[tl.deptIdx].id }
-    });
-    teamLeaders.push(u);
-  }
-
   const employees = [];
   const employeeData = [
-    { firstName: 'Aisha', lastName: 'Mohammed', email: 'emp.uw1@insurance.com', deptIdx: 1, tlIdx: 0 },
-    { firstName: 'Tewodros', lastName: 'Aschenaki', email: 'emp.uw2@insurance.com', deptIdx: 1, tlIdx: 0 },
-    { firstName: 'Liya', lastName: 'Gebreyesus', email: 'emp.uw3@insurance.com', deptIdx: 1, tlIdx: 1 },
-    { firstName: 'Dennis', lastName: 'Ochieng', email: 'emp.claims1@insurance.com', deptIdx: 2, tlIdx: 2 },
-    { firstName: 'Fiona', lastName: 'Wanjiku', email: 'emp.claims2@insurance.com', deptIdx: 2, tlIdx: 2 },
-    { firstName: 'Yonatan', lastName: 'Kebede', email: 'emp.sales1@insurance.com', deptIdx: 3, tlIdx: 3 },
-    { firstName: 'Eleni', lastName: 'Hailemariam', email: 'emp.sales2@insurance.com', deptIdx: 3, tlIdx: 3 },
-    { firstName: 'Chris', lastName: 'Omondi', email: 'emp.cs1@insurance.com', deptIdx: 7, tlIdx: 4 },
-    { firstName: 'Helen', lastName: 'Beyene', email: 'emp.cs2@insurance.com', deptIdx: 7, tlIdx: 4 },
-    { firstName: 'Samson', lastName: 'Lemma', email: 'emp.fin1@insurance.com', deptIdx: 4, tlIdx: 5 },
+    { firstName: 'Aisha', lastName: 'Mohammed', email: 'emp.uw1@insurance.com', deptIdx: 1 },
+    { firstName: 'Tewodros', lastName: 'Aschenaki', email: 'emp.uw2@insurance.com', deptIdx: 1 },
+    { firstName: 'Liya', lastName: 'Gebreyesus', email: 'emp.uw3@insurance.com', deptIdx: 1 },
+    { firstName: 'Dennis', lastName: 'Ochieng', email: 'emp.claims1@insurance.com', deptIdx: 2 },
+    { firstName: 'Fiona', lastName: 'Wanjiku', email: 'emp.claims2@insurance.com', deptIdx: 2 },
+    { firstName: 'Yonatan', lastName: 'Kebede', email: 'emp.sales1@insurance.com', deptIdx: 3 },
+    { firstName: 'Eleni', lastName: 'Hailemariam', email: 'emp.sales2@insurance.com', deptIdx: 3 },
+    { firstName: 'Chris', lastName: 'Omondi', email: 'emp.cs1@insurance.com', deptIdx: 7 },
+    { firstName: 'Helen', lastName: 'Beyene', email: 'emp.cs2@insurance.com', deptIdx: 7 },
+    { firstName: 'Samson', lastName: 'Lemma', email: 'emp.fin1@insurance.com', deptIdx: 4 },
   ];
   
   for (const emp of employeeData) {
-    const u = await prisma.user.create({
-      data: { firstName: emp.firstName, lastName: emp.lastName, email: emp.email, password, role: 'EMPLOYEE', departmentId: departments[emp.deptIdx].id, managerId: teamLeaders[emp.tlIdx].id }
+    const u = await upsertUser({
+      data: { firstName: emp.firstName, lastName: emp.lastName, email: emp.email, password, role: 'EMPLOYEE', departmentId: departments[emp.deptIdx].id, managerId: deptManagers[emp.deptIdx - 1].id }
     });
     employees.push(u);
   }
@@ -122,9 +112,19 @@ async function main() {
     for (let j = 0; j < 2; j++) {
       const template = planTemplates[(i * 2 + j) % planTemplates.length];
       const actualMultiplier = 0.5 + Math.random() * 0.7;
+      const title = `${template.title} - ${employees[i].firstName}`;
+      const existingPlan = await prisma.bSCPlan.findFirst({
+        where: { title, ownerId: employees[i].id }
+      });
+
+      if (existingPlan) {
+        createdPlans.push(existingPlan);
+        continue;
+      }
+
       const plan = await prisma.bSCPlan.create({
         data: {
-          title: `${template.title} - ${employees[i].firstName}`,
+          title,
           description: `${template.objective} - Individual plan for ${employees[i].firstName} ${employees[i].lastName}`,
           perspective: template.perspective,
           strategicObjective: template.objective,
@@ -152,7 +152,6 @@ async function main() {
   console.log(`Created 1 Board Member, 1 CEO`);
   console.log(`Created ${execManagers.length} Executive Managers`);
   console.log(`Created ${deptManagers.length} Department Managers`);
-  console.log(`Created ${teamLeaders.length} Team Leaders`);
   console.log(`Created ${employees.length} Employees`);
   console.log(`Created ${createdPlans.length} BSC Plans`);
   console.log('Seeding complete!');

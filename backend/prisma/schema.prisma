@@ -12,7 +12,6 @@ enum Role {
   CEO
   EXECUTIVE_MANAGER
   DEPARTMENT_MANAGER
-  TEAM_LEADER
   EMPLOYEE
 }
 
@@ -50,7 +49,6 @@ model Department {
 
   employees    User[]
   bscPlans     BSCPlan[]
-  teamLeaders  User[] @relation("TeamLeaderDepartment")
 }
 
 model User {
@@ -65,8 +63,6 @@ model User {
   managerId      String?
   manager        User?     @relation("ReportingHierarchy", fields: [managerId], references: [id])
   directReports  User[]    @relation("ReportingHierarchy")
-  teamLeaderDepartmentId String?
-  teamLeaderDepartment    Department? @relation("TeamLeaderDepartment", fields: [teamLeaderDepartmentId], references: [id])
   isActive       Boolean   @default(true)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt

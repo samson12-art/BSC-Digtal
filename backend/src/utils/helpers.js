@@ -28,8 +28,7 @@ async function createAuditLog(userId, userName, action, entity, entityId, detail
 
 function getNextReviewerRole(currentRole) {
   const hierarchy = {
-    'EMPLOYEE': 'TEAM_LEADER',
-    'TEAM_LEADER': 'DEPARTMENT_MANAGER',
+    'EMPLOYEE': 'DEPARTMENT_MANAGER',
     'DEPARTMENT_MANAGER': 'EXECUTIVE_MANAGER',
     'EXECUTIVE_MANAGER': 'CEO',
     'CEO': 'BOARD_MEMBER'
@@ -43,7 +42,6 @@ function getRoleLabel(role) {
     'CEO': 'Chief Executive Officer',
     'EXECUTIVE_MANAGER': 'Executive Manager',
     'DEPARTMENT_MANAGER': 'Department Manager',
-    'TEAM_LEADER': 'Team Leader',
     'EMPLOYEE': 'Employee'
   };
   return labels[role] || role;

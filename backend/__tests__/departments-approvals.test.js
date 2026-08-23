@@ -99,11 +99,11 @@ describe('Departments Routes', () => {
 });
 
 describe('Approvals Routes', () => {
-  const tlToken = jwt.sign({ userId: 'tl-1', role: 'TEAM_LEADER' }, process.env.JWT_SECRET);
+  const departmentManagerToken = jwt.sign({ userId: 'mgr-1', role: 'DEPARTMENT_MANAGER' }, process.env.JWT_SECRET);
   const ceoToken = jwt.sign({ userId: 'ceo-1', role: 'CEO' }, process.env.JWT_SECRET);
-  const mockTL = {
-    id: 'tl-1', firstName: 'TL', lastName: 'One', role: 'TEAM_LEADER',
-    departmentId: 'dept-1', managerId: 'mgr-1', isActive: true,
+  const mockDepartmentManager = {
+    id: 'mgr-1', firstName: 'Manager', lastName: 'One', role: 'DEPARTMENT_MANAGER',
+    departmentId: 'dept-1', managerId: 'exec-1', isActive: true,
     department: { id: 'dept-1', name: 'Underwriting' }, manager: null,
   };
   const mockCEO = {
@@ -122,7 +122,7 @@ describe('Approvals Routes', () => {
 
   describe('POST /api/approvals/:planId/approve', () => {
     it('should approve a submitted plan', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockTL);
+      prisma.user.findUnique.mockResolvedValue(mockDepartmentManager);
       prisma.bSCPlan.findUnique.mockResolvedValue(mockPlan);
       prisma.approvalHistory.create.mockResolvedValue({ id: 'approval-1' });
       prisma.bSCPlan.update.mockResolvedValue({ ...mockPlan, status: 'UNDER_REVIEW' });
@@ -131,7 +131,7 @@ describe('Approvals Routes', () => {
 
       const res = await request(app)
         .post('/api/approvals/plan-1/approve')
-        .set('Authorization', `Bearer ${tlToken}`)
+        .set('Authorization', `Bearer ${departmentManagerToken}`)
         .send({ comments: 'Looks good' });
 
       expect(res.status).toBe(200);
@@ -156,12 +156,12 @@ describe('Approvals Routes', () => {
     });
 
     it('should return 400 if plan is not reviewable', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockTL);
+      prisma.user.findUnique.mockResolvedValue(mockDepartmentManager);
       prisma.bSCPlan.findUnique.mockResolvedValue({ ...mockPlan, status: 'DRAFT' });
 
       const res = await request(app)
         .post('/api/approvals/plan-1/approve')
-        .set('Authorization', `Bearer ${tlToken}`)
+        .set('Authorization', `Bearer ${departmentManagerToken}`)
         .send({});
 
       expect(res.status).toBe(400);
@@ -170,7 +170,7 @@ describe('Approvals Routes', () => {
 
   describe('POST /api/approvals/:planId/reject', () => {
     it('should reject a plan with reason', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockTL);
+      prisma.user.findUnique.mockResolvedValue(mockDepartmentManager);
       prisma.bSCPlan.findUnique.mockResolvedValue(mockPlan);
       prisma.approvalHistory.create.mockResolvedValue({ id: 'approval-3' });
       prisma.bSCPlan.update.mockResolvedValue({ ...mockPlan, status: 'REJECTED' });
@@ -179,7 +179,7 @@ describe('Approvals Routes', () => {
 
       const res = await request(app)
         .post('/api/approvals/plan-1/reject')
-        .set('Authorization', `Bearer ${tlToken}`)
+        .set('Authorization', `Bearer ${departmentManagerToken}`)
         .send({ comments: 'Does not meet strategic alignment requirements' });
 
       expect(res.status).toBe(200);
@@ -187,11 +187,11 @@ describe('Approvals Routes', () => {
     });
 
     it('should return 400 without rejection reason', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockTL);
+      prisma.user.findUnique.mockResolvedValue(mockDepartmentManager);
 
       const res = await request(app)
         .post('/api/approvals/plan-1/reject')
-        .set('Authorization', `Bearer ${tlToken}`)
+        .set('Authorization', `Bearer ${departmentManagerToken}`)
         .send({ comments: '' });
 
       expect(res.status).toBe(400);
@@ -200,7 +200,7 @@ describe('Approvals Routes', () => {
 
   describe('POST /api/approvals/:planId/return', () => {
     it('should return plan for revision', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockTL);
+      prisma.user.findUnique.mockResolvedValue(mockDepartmentManager);
       prisma.bSCPlan.findUnique.mockResolvedValue(mockPlan);
       prisma.approvalHistory.create.mockResolvedValue({ id: 'approval-4' });
       prisma.bSCPlan.update.mockResolvedValue({ ...mockPlan, status: 'RETURNED_FOR_REVISION' });
@@ -209,7 +209,7 @@ describe('Approvals Routes', () => {
 
       const res = await request(app)
         .post('/api/approvals/plan-1/return')
-        .set('Authorization', `Bearer ${tlToken}`)
+        .set('Authorization', `Bearer ${departmentManagerToken}`)
         .send({ comments: 'Please revise the KPI targets to be more realistic' });
 
       expect(res.status).toBe(200);
@@ -217,11 +217,11 @@ describe('Approvals Routes', () => {
     });
 
     it('should return 400 without comments', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockTL);
+      prisma.user.findUnique.mockResolvedValue(mockDepartmentManager);
 
       const res = await request(app)
         .post('/api/approvals/plan-1/return')
-        .set('Authorization', `Bearer ${tlToken}`)
+        .set('Authorization', `Bearer ${departmentManagerToken}`)
         .send({ comments: '' });
 
       expect(res.status).toBe(400);

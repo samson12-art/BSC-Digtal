@@ -75,7 +75,7 @@ Role-adaptive dashboards that display relevant metrics:
 | Role | Dashboard | Key Metrics |
 |------|-----------|-------------|
 | Employee | Employee Dashboard | Own plans, achievement %, contributed plans, perspective breakdown |
-| Team Leader / Department Manager | Manager Dashboard | Team plans, pending reviews, member performance, overall achievement |
+| Department Manager | Manager Dashboard | Department plans, pending reviews, member performance, overall achievement |
 | Executive Manager / CEO / Board Member | Executive Dashboard | All plans, department comparison, top performers, status breakdown, budget overview |
 
 ### Notifications
@@ -156,7 +156,7 @@ Role-adaptive dashboards that display relevant metrics:
 
 ## Roles and Permissions
 
-The system defines six hierarchical roles. Each role has specific access rights:
+The system defines five hierarchical roles. Each role has specific access rights:
 
 ### Board Member
 - View executive dashboard and all corporate data
@@ -186,12 +186,6 @@ The system defines six hierarchical roles. Each role has specific access rights:
 - Manage users within their department scope
 - Create and edit plans
 
-### Team Leader
-- Manager dashboard showing direct reports
-- Review plans from direct reports
-- Approve, reject, or return plans from direct reports
-- Create and edit own plans
-
 ### Employee
 - Employee dashboard showing own plans and contributions
 - Create, edit, and delete own draft plans
@@ -200,18 +194,18 @@ The system defines six hierarchical roles. Each role has specific access rights:
 
 ### Access Control Matrix
 
-| Action | Employee | Team Leader | Dept Manager | Exec Manager | CEO | Board |
-|--------|----------|-------------|--------------|--------------|-----|-------|
-| Create Plan | Yes | Yes | Yes | Yes | Yes | Yes |
-| Edit Own Plan | Yes | Yes | Yes | Yes | Yes | Yes |
-| Delete Own Draft | Yes | Yes | Yes | Yes | Yes | Yes |
-| Submit for Review | Yes | Yes | Yes | Yes | Yes | Yes |
-| Approve Plans | - | Direct reports | Department | All | All | Final |
-| Reject Plans | - | Direct reports | Department | All | All | Final |
-| Manage Users | - | - | Limited | Yes | Yes | Yes |
-| Manage Departments | - | - | - | Yes | Yes | Yes |
-| View Audit Trail | - | - | - | Yes | Yes | Yes |
-| Generate Reports | Yes | Yes | Yes | Yes | Yes | Yes |
+| Action | Employee | Dept Manager | Exec Manager | CEO | Board |
+|--------|----------|--------------|--------------|-----|-------|
+| Create Plan | Yes | Yes | Yes | Yes | Yes |
+| Edit Own Plan | Yes | Yes | Yes | Yes | Yes |
+| Delete Own Draft | Yes | Yes | Yes | Yes | Yes |
+| Submit for Review | Yes | Yes | Yes | Yes | Yes |
+| Approve Plans | - | Department | All | All | Final |
+| Reject Plans | - | Department | All | All | Final |
+| Manage Users | - | Limited | Yes | Yes | Yes |
+| Manage Departments | - | - | Yes | Yes | Yes |
+| View Audit Trail | - | - | Yes | Yes | Yes |
+| Generate Reports | Yes | Yes | Yes | Yes | Yes |
 
 ---
 
@@ -231,8 +225,7 @@ The system defines six hierarchical roles. Each role has specific access rights:
 
 | Owner Role | First Reviewer | Next Level | Final Approver |
 |------------|---------------|------------|----------------|
-| Employee | Team Leader | Dept Manager → Exec Manager | CEO |
-| Team Leader | Dept Manager | Exec Manager | CEO |
+| Employee | Dept Manager | Exec Manager | CEO |
 | Department Manager | Exec Manager | CEO | CEO |
 | Executive Manager | CEO | CEO | CEO |
 | CEO | N/A | N/A | Self-approval |
@@ -289,7 +282,7 @@ Department ──┬── User ──┬── BSCPlan ──┬── Approval
 | lastName | String | Last name |
 | email | String | Unique email address |
 | password | String | Hashed password (bcrypt, 12 rounds) |
-| role | Enum | One of: BOARD_MEMBER, CEO, EXECUTIVE_MANAGER, DEPARTMENT_MANAGER, TEAM_LEADER, EMPLOYEE |
+| role | Enum | One of: BOARD_MEMBER, CEO, EXECUTIVE_MANAGER, DEPARTMENT_MANAGER, EMPLOYEE |
 | departmentId | UUID? | FK to Department |
 | managerId | UUID? | FK to User (reporting hierarchy) |
 | isActive | Boolean | Account active status (default: true) |
@@ -453,7 +446,7 @@ Request:
 | POST | `/api/users` | Create a new user | CEO, Executive Manager, Dept Manager, Board |
 | PUT | `/api/users/:id` | Update a user | CEO, Executive Manager, Dept Manager, Board |
 | GET | `/api/users/hierarchy` | Get users grouped by role | All authenticated |
-| GET | `/api/users/my-team` | Get direct reports | Team Leader, Dept Manager, Exec Manager, CEO |
+| GET | `/api/users/my-team` | Get direct reports | Dept Manager, Exec Manager, CEO |
 | GET | `/api/users/search?q=` | Search users by name/email | All authenticated |
 
 **GET `/api/users` Query Parameters:**
@@ -495,7 +488,7 @@ Request:
 | DELETE | `/api/plans/:id` | Delete a draft plan | Owner only (DRAFT status) |
 | POST | `/api/plans/:id/upload` | Upload an attachment | All authenticated |
 | POST | `/api/plans/:id/comments` | Add a comment | All authenticated |
-| GET | `/api/plans/pending-reviews/all` | Get plans pending review | Team Leader+ |
+| GET | `/api/plans/pending-reviews/all` | Get plans pending review | Dept Manager+ |
 
 **GET `/api/plans` Query Parameters:**
 - `status` — Filter by plan status
@@ -536,9 +529,9 @@ Request:
 | Method | Endpoint | Description | Access |
 |--------|----------|-------------|--------|
 | POST | `/api/approvals/:planId/submit` | Submit plan for review | Plan owner |
-| POST | `/api/approvals/:planId/approve` | Approve a plan | Team Leader+ |
-| POST | `/api/approvals/:planId/reject` | Reject a plan (reason required) | Team Leader+ |
-| POST | `/api/approvals/:planId/return` | Return plan for revision (comments required) | Team Leader+ |
+| POST | `/api/approvals/:planId/approve` | Approve a plan | Dept Manager+ |
+| POST | `/api/approvals/:planId/reject` | Reject a plan (reason required) | Dept Manager+ |
+| POST | `/api/approvals/:planId/return` | Return plan for revision (comments required) | Dept Manager+ |
 
 **POST `/api/approvals/:planId/approve`**
 
@@ -589,7 +582,7 @@ Note: Rejection comments require a minimum of 10 characters.
 | Method | Endpoint | Description | Access |
 |--------|----------|-------------|--------|
 | GET | `/api/dashboard/employee` | Employee dashboard data | All authenticated |
-| GET | `/api/dashboard/manager` | Manager dashboard data | Team Leader, Dept Manager |
+| GET | `/api/dashboard/manager` | Manager dashboard data | Dept Manager |
 | GET | `/api/dashboard/executive` | Executive dashboard data | Exec Manager, CEO, Board |
 
 ---
@@ -652,7 +645,7 @@ Note: Total contributions across all contributors for a plan cannot exceed 100%.
 | `/plans/new` | PlanCreate | All | Plan creation form |
 | `/plans/:id` | PlanDetail | All | Full plan details with history, comments, attachments |
 | `/plans/:id/edit` | PlanEdit | Owner / Exec+ | Plan editing form |
-| `/reviews` | PendingReviews | Team Leader+ | Queue of plans awaiting review |
+| `/reviews` | PendingReviews | Dept Manager+ | Queue of plans awaiting review |
 | `/reports` | ReportsPage | All | Report generation with Excel/PDF downloads |
 | `/users` | UsersPage | CEO, Exec Manager, Dept Manager, Board | User management |
 | `/departments` | DepartmentsPage | CEO, Exec Manager, Board | Department management |
@@ -748,7 +741,6 @@ After seeding, the following accounts are available:
 |-------|----------|------|
 | admin@insurance.com | Password123! | CEO |
 | manager@insurance.com | Password123! | Department Manager |
-| teamlead@insurance.com | Password123! | Team Leader |
 | employee@insurance.com | Password123! | Employee |
 
 ---

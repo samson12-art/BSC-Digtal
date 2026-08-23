@@ -20,7 +20,6 @@ export const roles = [
   { value: 'CEO', label: 'Chief Executive Officer' },
   { value: 'EXECUTIVE_MANAGER', label: 'Executive Manager' },
   { value: 'DEPARTMENT_MANAGER', label: 'Department Manager' },
-  { value: 'TEAM_LEADER', label: 'Team Leader' },
   { value: 'EMPLOYEE', label: 'Employee' }
 ];
 
@@ -29,7 +28,6 @@ export const roleColors = {
   CEO: 'bg-red-100 text-red-800',
   EXECUTIVE_MANAGER: 'bg-blue-100 text-blue-800',
   DEPARTMENT_MANAGER: 'bg-green-100 text-green-800',
-  TEAM_LEADER: 'bg-amber-100 text-amber-800',
   EMPLOYEE: 'bg-gray-100 text-gray-800'
 };
 

@@ -49,6 +49,10 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/contributors', contributorRoutes);
+app.get('/', (req, res) => res.status(200).json({
+  message: 'BSC Management API is running',
+  health: '/api/health'
+}));
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
 app.use((err, req, res, next) => {

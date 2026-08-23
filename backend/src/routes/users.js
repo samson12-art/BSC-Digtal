@@ -41,7 +41,7 @@ router.get('/hierarchy', authenticate, async (req, res) => {
       orderBy: [{ role: 'asc' }, { lastName: 'asc' }]
     });
     const hierarchy = {};
-    const roleOrder = ['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'];
+    const roleOrder = ['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE'];
     roleOrder.forEach(role => { hierarchy[role] = users.filter(u => u.role === role).map(({ password, ...rest }) => rest); });
     res.json(hierarchy);
   } catch (error) {
@@ -53,7 +53,7 @@ router.post('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT
   body('firstName').trim().notEmpty().withMessage('First name is required'),
   body('lastName').trim().notEmpty().withMessage('Last name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
-  body('role').isIn(['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE']).withMessage('Valid role is required'),
+  body('role').isIn(['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE']).withMessage('Valid role is required'),
   validate
 ], async (req, res) => {
   try {
@@ -80,7 +80,7 @@ router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTME
   body('firstName').optional().trim().notEmpty(),
   body('lastName').optional().trim().notEmpty(),
   body('email').optional().isEmail().withMessage('Valid email is required'),
-  body('role').optional().isIn(['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'TEAM_LEADER', 'EMPLOYEE']),
+  body('role').optional().isIn(['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE']),
   validate
 ], async (req, res) => {
   try {
@@ -98,7 +98,7 @@ router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTME
   }
 });
 
-router.get('/my-team', authenticate, authorize('TEAM_LEADER', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'), async (req, res) => {
+router.get('/my-team', authenticate, authorize('DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'), async (req, res) => {
   try {
     const team = await prisma.user.findMany({
       where: { managerId: req.user.id, isActive: true },

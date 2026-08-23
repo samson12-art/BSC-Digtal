@@ -37,11 +37,6 @@ router.get('/', authenticate, async (req, res) => {
     
     if (req.user.role === 'EMPLOYEE') {
       where.ownerId = req.user.id;
-    } else if (req.user.role === 'TEAM_LEADER') {
-      where.OR = [
-        { ownerId: req.user.id },
-        { owner: { managerId: req.user.id } }
-      ];
     } else if (req.user.role === 'DEPARTMENT_MANAGER') {
       where.OR = [
         { ownerId: req.user.id },
@@ -221,17 +216,14 @@ router.post('/:id/comments', authenticate, [
   }
 });
 
-router.get('/pending-reviews/all', authenticate, authorize('TEAM_LEADER', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'), async (req, res) => {
+router.get('/pending-reviews/all', authenticate, authorize('DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'), async (req, res) => {
   try {
     let where = { status: 'SUBMITTED' };
-    if (req.user.role === 'TEAM_LEADER') {
-      where.owner = { managerId: req.user.id };
-    } else if (req.user.role === 'DEPARTMENT_MANAGER') {
+    if (req.user.role === 'DEPARTMENT_MANAGER') {
       where.OR = [
         { departmentId: req.user.departmentId, status: 'SUBMITTED' },
         { departmentId: req.user.departmentId, status: 'UNDER_REVIEW' }
       ];
-      delete where.owner;
     }
     const plans = await prisma.bSCPlan.findMany({
       where,

@@ -69,14 +69,14 @@ router.get('/employee', authenticate, async (req, res) => {
   }
 });
 
-router.get('/manager', authenticate, authorize('TEAM_LEADER', 'DEPARTMENT_MANAGER'), async (req, res) => {
+router.get('/manager', authenticate, authorize('DEPARTMENT_MANAGER'), async (req, res) => {
   try {
     const teamPlans = await prisma.bSCPlan.findMany({
       where: {
         OR: [
           { ownerId: req.user.id },
           { owner: { managerId: req.user.id } },
-          ...(req.user.role === 'DEPARTMENT_MANAGER' ? [{ departmentId: req.user.departmentId }] : [])
+          { departmentId: req.user.departmentId }
         ]
       },
       include: { owner: { select: { id: true, firstName: true, lastName: true } }, department: true }

@@ -36,12 +36,8 @@ describe('Helper Functions', () => {
   });
 
   describe('getNextReviewerRole', () => {
-    it('should return TEAM_LEADER for EMPLOYEE', () => {
-      expect(getNextReviewerRole('EMPLOYEE')).toBe('TEAM_LEADER');
-    });
-
-    it('should return DEPARTMENT_MANAGER for TEAM_LEADER', () => {
-      expect(getNextReviewerRole('TEAM_LEADER')).toBe('DEPARTMENT_MANAGER');
+    it('should return DEPARTMENT_MANAGER for EMPLOYEE', () => {
+      expect(getNextReviewerRole('EMPLOYEE')).toBe('DEPARTMENT_MANAGER');
     });
 
     it('should return EXECUTIVE_MANAGER for DEPARTMENT_MANAGER', () => {
@@ -67,7 +63,6 @@ describe('Helper Functions', () => {
       expect(getRoleLabel('CEO')).toBe('Chief Executive Officer');
       expect(getRoleLabel('EXECUTIVE_MANAGER')).toBe('Executive Manager');
       expect(getRoleLabel('DEPARTMENT_MANAGER')).toBe('Department Manager');
-      expect(getRoleLabel('TEAM_LEADER')).toBe('Team Leader');
       expect(getRoleLabel('EMPLOYEE')).toBe('Employee');
     });
 

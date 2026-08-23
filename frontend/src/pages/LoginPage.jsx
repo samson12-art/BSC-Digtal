@@ -74,17 +74,6 @@ export default function LoginPage() {
               {loading ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" /> : <><LogIn size={18} />Sign In</>}
             </button>
           </form>
-          <div className="mt-8 p-4 rounded-xl" style={{backgroundColor:'#f6f8f7', border:'1px solid #dfe7e4'}}>
-            <p className="text-xs font-medium mb-2" style={{color:'#6c7774'}}>Demo Credentials:</p>
-            <div className="space-y-1 text-xs" style={{color:'#6c7774'}}>
-              <p><strong style={{color:'#17211f'}}>CEO:</strong> ceo@insurance.com</p>
-              <p><strong style={{color:'#17211f'}}>Executive:</strong> exec.uw@insurance.com</p>
-              <p><strong style={{color:'#17211f'}}>Dept Manager:</strong> mgr.uw1@insurance.com</p>
-              <p><strong style={{color:'#17211f'}}>Team Leader:</strong> tl.uw1@insurance.com</p>
-              <p><strong style={{color:'#17211f'}}>Employee:</strong> emp.uw1@insurance.com</p>
-              <p className="mt-1" style={{color:'#6c7774'}}>Password: Password123!</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>
