@@ -5,7 +5,9 @@ const morgan = require('morgan');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
+const prisma = require('./utils/prisma');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -67,6 +69,28 @@ const io = new Server(httpServer, {
 
 app.set('io', io);
 
+async function ensureInitialCeo() {
+  const email = process.env.INITIAL_CEO_EMAIL?.trim().toLowerCase();
+  const password = process.env.INITIAL_CEO_PASSWORD;
+  if (!email || !password) return;
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) return;
+
+  const [department, boardMember] = await Promise.all([
+    prisma.department.findUnique({ where: { name: 'Executive Office' } }),
+    prisma.user.findFirst({ where: { role: 'BOARD_MEMBER', isActive: true }, select: { id: true } })
+  ]);
+  await prisma.user.create({
+    data: {
+      firstName: 'Samson', lastName: 'Yeshanew', email,
+      password: await bcrypt.hash(password, 12), role: 'CEO',
+      departmentId: department?.id, managerId: boardMember?.id
+    }
+  });
+  console.log(`Initial CEO account created for ${email}`);
+}
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
   socket.on('join', (userId) => {
@@ -81,7 +105,7 @@ module.exports = app;
 
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
-  httpServer.listen(PORT, () => {
-    console.log(`BSC Server running on port ${PORT}`);
-  });
+  ensureInitialCeo()
+    .catch(error => console.error('Initial CEO setup failed:', error.message))
+    .finally(() => httpServer.listen(PORT, () => console.log(`BSC Server running on port ${PORT}`)));
 }
