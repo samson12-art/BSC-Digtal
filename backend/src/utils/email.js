@@ -95,4 +95,13 @@ async function sendNotificationEmail(userEmail, title, message, type, linkUrl = 
   return sendEmail(userEmail, subject, html, text);
 }
 
-module.exports = { sendEmail, sendNotificationEmail, getTransporter };
+async function sendVerificationEmail(userEmail, firstName, token) {
+  const apiUrl = process.env.API_URL || 'http://localhost:5000';
+  const verificationUrl = `${apiUrl}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+  const subject = 'BSC System: Verify your email address';
+  const text = `Hello ${firstName},\n\nVerify your email address to activate your BSC System account:\n${verificationUrl}\n\nThis link expires in 24 hours.`;
+  const html = `<p>Hello ${firstName},</p><p>Verify your email address to activate your BSC System account.</p><p><a href="${verificationUrl}">Verify email address</a></p><p>This link expires in 24 hours.</p>`;
+  return sendEmail(userEmail, subject, html, text);
+}
+
+module.exports = { sendEmail, sendNotificationEmail, sendVerificationEmail, getTransporter };

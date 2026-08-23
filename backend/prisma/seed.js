@@ -6,6 +6,8 @@ async function main() {
   console.log('Seeding database...');
   
   const password = await bcrypt.hash('Password123!', 12);
+  const ceoPassword = await bcrypt.hash(process.env.INITIAL_CEO_PASSWORD || 'Password123!', 12);
+  const ceoEmail = (process.env.INITIAL_CEO_EMAIL || 'samsonyeshanew@gwmail.com').toLowerCase();
   // Seeds are run more than once during development, so use the unique fields
   // in the schema to update existing records instead of creating duplicates.
   const upsertUser = ({ data }) => prisma.user.upsert({
@@ -31,9 +33,12 @@ async function main() {
     data: { firstName: 'Alemayehu', lastName: 'Bekele', email: 'board@insurance.com', password, role: 'BOARD_MEMBER' }
   });
 
-  const ceo = await upsertUser({
-    data: { firstName: 'Tigist', lastName: 'Mulugeta', email: 'ceo@insurance.com', password, role: 'CEO', departmentId: departments[0].id, managerId: board.id }
-  });
+  const ceoData = { firstName: 'Samson', lastName: 'Yeshanew', email: ceoEmail, password: ceoPassword, role: 'CEO', departmentId: departments[0].id, managerId: board.id, emailVerifiedAt: null, emailVerificationToken: null, emailVerificationExpiresAt: null };
+  const legacyCeo = await prisma.user.findUnique({ where: { email: 'ceo@insurance.com' } });
+  const configuredCeo = await prisma.user.findUnique({ where: { email: ceoEmail } });
+  const ceo = legacyCeo && !configuredCeo
+    ? await prisma.user.update({ where: { id: legacyCeo.id }, data: ceoData })
+    : await upsertUser({ data: ceoData });
 
   const execManagers = [];
   const executiveData = [

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Hexagon, Eye, EyeOff, LogIn } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -23,6 +24,16 @@ export default function LoginPage() {
       toast.error(err.response?.data?.error || 'Login failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resendVerification = async () => {
+    if (!email) return toast.error('Enter your email address first.');
+    try {
+      await api.post('/auth/resend-verification', { email });
+      toast.success('If your account needs verification, a new link has been sent.');
+    } catch {
+      toast.error('Could not send a verification email. Please try again.');
     }
   };
 
@@ -74,6 +85,9 @@ export default function LoginPage() {
               {loading ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" /> : <><LogIn size={18} />Sign In</>}
             </button>
           </form>
+          <button type="button" onClick={resendVerification} className="mt-4 text-sm font-medium text-[#136f63] hover:text-[#0e554c]">
+            Resend email verification link
+          </button>
         </div>
       </div>
     </div>

@@ -12,6 +12,8 @@ const request = require('supertest');
 const prisma = require('../src/utils/prisma');
 const app = require('../src/index');
 
+jest.mock('../src/utils/email', () => ({ sendVerificationEmail: jest.fn() }));
+
 describe('Auth Routes', () => {
   const mockUser = {
     id: 'user-1',
@@ -23,6 +25,7 @@ describe('Auth Routes', () => {
     departmentId: 'dept-1',
     managerId: null,
     isActive: true,
+    emailVerifiedAt: new Date(),
     department: { id: 'dept-1', name: 'Underwriting' },
     manager: null,
     createdAt: new Date(),
@@ -83,6 +86,16 @@ describe('Auth Routes', () => {
         .send({ email: 'john@insurance.com', password: 'Password123!' });
 
       expect(res.status).toBe(401);
+    });
+
+    it('should require email verification before sign in', async () => {
+      prisma.user.findUnique.mockResolvedValue({ ...mockUser, emailVerifiedAt: null });
+
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'john@insurance.com', password: 'Password123!' });
+
+      expect(res.status).toBe(403);
     });
 
     it('should return 400 on missing email', async () => {

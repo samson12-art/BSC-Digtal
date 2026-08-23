@@ -6,6 +6,11 @@ const prisma = require('../utils/prisma');
 const { authenticate, authorize } = require('../middleware/auth');
 const { createAuditLog } = require('../utils/helpers');
 const { validate } = require('../middleware/validate');
+const { sendVerificationEmail } = require('../utils/email');
+const crypto = require('crypto');
+
+const createVerificationToken = () => crypto.randomBytes(32).toString('hex');
+const hashVerificationToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 router.get('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'BOARD_MEMBER'), async (req, res) => {
   try {
@@ -63,11 +68,14 @@ router.post('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT
       return res.status(400).json({ error: 'Email already exists' });
     }
     const hashedPassword = await bcrypt.hash(password || 'Password123!', 12);
+    const token = createVerificationToken();
     const user = await prisma.user.create({
-      data: { firstName, lastName, email, password: hashedPassword, role, departmentId, managerId },
+      data: { firstName, lastName, email: email.toLowerCase(), password: hashedPassword, role, departmentId, managerId,
+        emailVerificationToken: hashVerificationToken(token), emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
       include: { department: true }
     });
     await createAuditLog(req.user.id, `${req.user.firstName} ${req.user.lastName}`, 'CREATE_USER', 'User', user.id, { email, role });
+    await sendVerificationEmail(user.email, user.firstName, token);
     const { password: _, ...userWithoutPassword } = user;
     res.status(201).json(userWithoutPassword);
   } catch (error) {
@@ -85,11 +93,20 @@ router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTME
 ], async (req, res) => {
   try {
     const { firstName, lastName, email, role, departmentId, managerId, isActive } = req.body;
+    const data = { firstName, lastName, email: email?.toLowerCase(), role, departmentId, managerId, isActive };
+    let emailVerificationToken;
+    if (email) {
+      emailVerificationToken = createVerificationToken();
+      data.emailVerifiedAt = null;
+      data.emailVerificationToken = hashVerificationToken(emailVerificationToken);
+      data.emailVerificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    }
     const user = await prisma.user.update({
       where: { id: req.params.id },
-      data: { firstName, lastName, email, role, departmentId, managerId, isActive },
+      data,
       include: { department: true }
     });
+    if (email) await sendVerificationEmail(user.email, user.firstName, emailVerificationToken);
     await createAuditLog(req.user.id, `${req.user.firstName} ${req.user.lastName}`, 'UPDATE_USER', 'User', user.id, req.body);
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
