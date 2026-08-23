@@ -70,12 +70,18 @@ const io = new Server(httpServer, {
 app.set('io', io);
 
 async function ensureInitialCeo() {
-  const email = process.env.INITIAL_CEO_EMAIL?.trim().toLowerCase();
+  const email = process.env.INITIAL_CEO_EMAIL?.trim().toLowerCase().replace(/\\/g, '');
   const password = process.env.INITIAL_CEO_PASSWORD;
   if (!email || !password) return;
 
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return;
+  if (existing) {
+    if (process.env.RESET_INITIAL_CEO_PASSWORD === 'true') {
+      await prisma.user.update({ where: { id: existing.id }, data: { password: await bcrypt.hash(password, 12) } });
+      console.log(`Initial CEO password reset for ${email}`);
+    }
+    return;
+  }
 
   const [department, boardMember] = await Promise.all([
     prisma.department.findUnique({ where: { name: 'Executive Office' } }),
