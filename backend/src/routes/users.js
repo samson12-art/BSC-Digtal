@@ -11,12 +11,33 @@ const crypto = require('crypto');
 
 const createVerificationToken = () => crypto.randomBytes(32).toString('hex');
 const hashVerificationToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+const managedRoles = {
+  CEO: new Set(['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE']),
+  EXECUTIVE_MANAGER: new Set(['DEPARTMENT_MANAGER', 'EMPLOYEE']),
+  DEPARTMENT_MANAGER: new Set(['EMPLOYEE'])
+};
+
+function canManageUser(actor, role, departmentId) {
+  if (!managedRoles[actor.role]?.has(role)) return false;
+  return actor.role === 'CEO' || (Boolean(actor.departmentId) && departmentId === actor.departmentId);
+}
+
+async function validateManagerScope(actor, managerId, departmentId) {
+  if (!managerId || actor.role === 'CEO') return null;
+  const manager = await prisma.user.findUnique({ where: { id: managerId }, select: { departmentId: true } });
+  if (!manager || manager.departmentId !== departmentId) {
+    return 'Reports-to manager must belong to your department.';
+  }
+  return null;
+}
 
 router.get('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'BOARD_MEMBER'), async (req, res) => {
   try {
     const { departmentId, role, search } = req.query;
     const where = {};
-    if (departmentId) where.departmentId = departmentId;
+    if (req.user.role === 'EXECUTIVE_MANAGER' || req.user.role === 'DEPARTMENT_MANAGER') {
+      where.departmentId = req.user.departmentId || '__no_department_assigned__';
+    } else if (departmentId) where.departmentId = departmentId;
     if (role) where.role = role;
     if (search) {
       where.OR = [
@@ -54,7 +75,7 @@ router.get('/hierarchy', authenticate, async (req, res) => {
   }
 });
 
-router.post('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'BOARD_MEMBER'), [
+router.post('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER'), [
   body('firstName').trim().notEmpty().withMessage('First name is required'),
   body('lastName').trim().notEmpty().withMessage('Last name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
@@ -63,6 +84,11 @@ router.post('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT
 ], async (req, res) => {
   try {
     const { firstName, lastName, email, password, role, departmentId, managerId } = req.body;
+    if (!canManageUser(req.user, role, departmentId)) {
+      return res.status(403).json({ error: 'You can only create permitted roles in your assigned department.' });
+    }
+    const managerScopeError = await validateManagerScope(req.user, managerId, departmentId);
+    if (managerScopeError) return res.status(403).json({ error: managerScopeError });
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       return res.status(400).json({ error: 'Email already exists' });
@@ -84,7 +110,7 @@ router.post('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT
   }
 });
 
-router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'BOARD_MEMBER'), [
+router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER'), [
   body('firstName').optional().trim().notEmpty(),
   body('lastName').optional().trim().notEmpty(),
   body('email').optional().isEmail().withMessage('Valid email is required'),
@@ -93,6 +119,15 @@ router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTME
 ], async (req, res) => {
   try {
     const { firstName, lastName, email, role, departmentId, managerId, isActive } = req.body;
+    const existing = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'User not found' });
+    const nextRole = role || existing.role;
+    const nextDepartmentId = departmentId === undefined ? existing.departmentId : departmentId;
+    if (!canManageUser(req.user, existing.role, existing.departmentId) || !canManageUser(req.user, nextRole, nextDepartmentId)) {
+      return res.status(403).json({ error: 'You can only manage permitted roles in your assigned department.' });
+    }
+    const managerScopeError = await validateManagerScope(req.user, managerId, nextDepartmentId);
+    if (managerScopeError) return res.status(403).json({ error: managerScopeError });
     const data = { firstName, lastName, email: email?.toLowerCase(), role, departmentId, managerId, isActive };
     let emailVerificationToken;
     if (email) {

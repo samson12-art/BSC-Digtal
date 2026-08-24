@@ -5,8 +5,10 @@ import Modal from '../components/Modal';
 import { roleColors, roles } from '../lib/utils';
 import { Plus, Edit, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
 export default function UsersPage() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +30,7 @@ export default function UsersPage() {
     finally { setLoading(false); }
   };
 
-  const openCreate = () => { setEditingUser(null); setForm({ firstName: '', lastName: '', email: '', password: 'Password123!', role: 'EMPLOYEE', departmentId: '', managerId: '', isActive: true }); setShowModal(true); };
+  const openCreate = () => { setEditingUser(null); setForm({ firstName: '', lastName: '', email: '', password: 'Password123!', role: 'EMPLOYEE', departmentId: currentUser?.role === 'CEO' ? '' : currentUser?.departmentId || '', managerId: '', isActive: true }); setShowModal(true); };
 
   const openEdit = (user) => { setEditingUser(user); setForm({ firstName: user.firstName, lastName: user.lastName, email: user.email, password: '', role: user.role, departmentId: user.departmentId || '', managerId: user.managerId || '', isActive: user.isActive }); setShowModal(true); };
 
@@ -48,13 +50,30 @@ export default function UsersPage() {
     return matchSearch && matchRole;
   });
 
+  const allowedRoles = currentUser?.role === 'CEO'
+    ? roles
+    : currentUser?.role === 'EXECUTIVE_MANAGER'
+      ? roles.filter(role => ['DEPARTMENT_MANAGER', 'EMPLOYEE'].includes(role.value))
+      : roles.filter(role => role.value === 'EMPLOYEE');
+  const canManageUsers = ['CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER'].includes(currentUser?.role);
+  const availableDepartments = currentUser?.role === 'CEO'
+    ? departments
+    : departments.filter(department => department.id === currentUser?.departmentId);
+  const canEditUser = (target) => currentUser?.role === 'CEO'
+    || (currentUser?.role === 'EXECUTIVE_MANAGER'
+      && ['DEPARTMENT_MANAGER', 'EMPLOYEE'].includes(target.role)
+      && target.departmentId === currentUser.departmentId)
+    || (currentUser?.role === 'DEPARTMENT_MANAGER'
+      && target.role === 'EMPLOYEE'
+      && target.departmentId === currentUser.departmentId);
+
   if (loading) return <LoadingSpinner className="h-96" size="lg" />;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div><h1 className="text-2xl font-bold text-gray-900">User Management</h1><p className="text-sm text-gray-500">Manage system users and roles ({users.length} users)</p></div>
-        <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={18} />Add User</button>
+        {canManageUsers && <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={18} />Add User</button>}
       </div>
       <div className="card">
         <div className="flex flex-col md:flex-row gap-3 mb-6">
@@ -72,7 +91,7 @@ export default function UsersPage() {
                   <td className="table-cell text-sm">{u.department?.name || '-'}</td>
                   <td className="table-cell text-sm">{u.manager ? `${u.manager.firstName} ${u.manager.lastName}` : '-'}</td>
                   <td className="table-cell"><span className={`badge ${u.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{u.isActive ? 'Active' : 'Inactive'}</span></td>
-                  <td className="table-cell"><button onClick={() => openEdit(u)} className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit size={16} className="text-gray-600" /></button></td>
+                  <td className="table-cell">{canEditUser(u) && <button onClick={() => openEdit(u)} className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit size={16} className="text-gray-600" /></button>}</td>
                 </tr>
               ))}
             </tbody>
@@ -86,8 +105,8 @@ export default function UsersPage() {
             <div><label className="label">Last Name *</label><input value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} className="input-field" required /></div>
             <div><label className="label">Email *</label><input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="input-field" required /></div>
             <div><label className="label">{editingUser ? 'New Password' : 'Password *'}</label><input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="input-field" required={!editingUser} placeholder={editingUser ? 'Leave blank to keep current' : ''} /></div>
-            <div><label className="label">Role *</label><select value={form.role} onChange={e => setForm({...form, role: e.target.value})} className="input-field" required>{roles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select></div>
-            <div><label className="label">Department</label><select value={form.departmentId} onChange={e => setForm({...form, departmentId: e.target.value})} className="input-field"><option value="">Select department</option>{departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+            <div><label className="label">Role *</label><select value={form.role} onChange={e => setForm({...form, role: e.target.value})} className="input-field" required>{allowedRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select></div>
+            <div><label className="label">Department</label><select value={form.departmentId} onChange={e => setForm({...form, departmentId: e.target.value})} className="input-field" disabled={currentUser?.role !== 'CEO'} required={currentUser?.role !== 'CEO'}><option value="">Select department</option>{availableDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
             <div><label className="label">Reports To</label><select value={form.managerId} onChange={e => setForm({...form, managerId: e.target.value})} className="input-field"><option value="">Select manager</option>{allUsers.filter(u => u.id !== editingUser?.id).map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.role?.replace(/_/g, ' ')})</option>)}</select></div>
             <div><label className="label">Status</label><select value={form.isActive} onChange={e => setForm({...form, isActive: e.target.value === 'true'})} className="input-field"><option value="true">Active</option><option value="false">Inactive</option></select></div>
           </div>
