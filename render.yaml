@@ -30,6 +30,12 @@ services:
         sync: false
       - key: RESEND_FROM
         value: BSC System <onboarding@resend.dev>
+      - key: AFROMESSAGE_TOKEN
+        sync: false
+      - key: AFROMESSAGE_IDENTIFIER
+        sync: false
+      - key: AFROMESSAGE_SENDER
+        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

@@ -9,6 +9,7 @@ const { authenticate } = require('../middleware/auth');
 const { createAuditLog } = require('../utils/helpers');
 const { validate } = require('../middleware/validate');
 const { sendVerificationEmail } = require('../utils/email');
+const { normalizePhone, sendPhoneVerification, verifyPhoneCode } = require('../utils/sms');
 
 const verificationToken = () => crypto.randomBytes(32).toString('hex');
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
@@ -106,6 +107,53 @@ router.put('/change-password', authenticate, [
     await prisma.user.update({ where: { id: req.user.id }, data: { password: hashedPassword } });
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/phone/send', authenticate, [
+  body('phone').notEmpty().withMessage('Phone number is required'),
+  validate
+], async (req, res) => {
+  try {
+    const phone = normalizePhone(req.body.phone);
+    if (!phone) {
+      return res.status(400).json({ error: 'Enter a valid Ethiopian phone number, e.g. 0912345678.' });
+    }
+    const taken = await prisma.user.findFirst({ where: { phone, id: { not: req.user.id } } });
+    if (taken) {
+      return res.status(409).json({ error: 'This phone number is already linked to another account.' });
+    }
+    if (req.user.phone !== phone || !req.user.phoneVerifiedAt) {
+      await prisma.user.update({ where: { id: req.user.id }, data: { phone, phoneVerifiedAt: null } });
+    }
+    const result = await sendPhoneVerification(phone);
+    if (!result) {
+      return res.status(502).json({ error: 'Unable to send the verification SMS right now. Please try again.' });
+    }
+    res.json({ message: `A verification code was sent to +${phone}.` });
+  } catch (error) {
+    console.error('Send phone verification error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/phone/verify', authenticate, [
+  body('code').isLength({ min: 4, max: 8 }).withMessage('Verification code is required'),
+  validate
+], async (req, res) => {
+  try {
+    if (!req.user.phone) {
+      return res.status(400).json({ error: 'No phone number is attached to your account.' });
+    }
+    const result = await verifyPhoneCode(req.user.phone, req.body.code);
+    if (!result) {
+      return res.status(400).json({ error: 'The code is invalid or has expired.' });
+    }
+    await prisma.user.update({ where: { id: req.user.id }, data: { phoneVerifiedAt: new Date() } });
+    res.json({ message: 'Phone number verified successfully.' });
+  } catch (error) {
+    console.error('Verify phone error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
