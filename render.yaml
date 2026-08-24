@@ -21,7 +21,7 @@ services:
       - key: API_URL
         sync: false
       - key: INITIAL_CEO_EMAIL
-        value: samsonyeshanew@gwmail.com
+        value: samsonyeshanew@gmail.com
       - key: INITIAL_CEO_PASSWORD
         sync: false
       - key: RESET_INITIAL_CEO_PASSWORD

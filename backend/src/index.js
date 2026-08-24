@@ -80,6 +80,10 @@ async function ensureInitialCeo() {
       await prisma.user.update({ where: { id: existing.id }, data: { password: await bcrypt.hash(password, 12) } });
       console.log(`Initial CEO password reset for ${email}`);
     }
+    if (!existing.emailVerifiedAt) {
+      await prisma.user.update({ where: { id: existing.id }, data: { emailVerifiedAt: new Date() } });
+      console.log(`Initial CEO email marked as verified for ${email}`);
+    }
     return;
   }
 
@@ -91,7 +95,8 @@ async function ensureInitialCeo() {
     data: {
       firstName: 'Samson', lastName: 'Yeshanew', email,
       password: await bcrypt.hash(password, 12), role: 'CEO',
-      departmentId: department?.id, managerId: boardMember?.id
+      departmentId: department?.id, managerId: boardMember?.id,
+      emailVerifiedAt: new Date()
     }
   });
   console.log(`Initial CEO account created for ${email}`);

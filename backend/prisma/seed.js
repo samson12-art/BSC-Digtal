@@ -7,7 +7,7 @@ async function main() {
   
   const password = await bcrypt.hash('Password123!', 12);
   const ceoPassword = await bcrypt.hash(process.env.INITIAL_CEO_PASSWORD || 'Password123!', 12);
-  const ceoEmail = (process.env.INITIAL_CEO_EMAIL || 'samsonyeshanew@gwmail.com').toLowerCase();
+  const ceoEmail = (process.env.INITIAL_CEO_EMAIL || 'samsonyeshanew@gmail.com').toLowerCase();
   // Seeds are run more than once during development, so use the unique fields
   // in the schema to update existing records instead of creating duplicates.
   const upsertUser = ({ data }) => prisma.user.upsert({

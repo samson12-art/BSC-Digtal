@@ -59,8 +59,8 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-[#f6f8f7]">
-        <div className="w-full max-w-md">
+      <div className="flex flex-1 min-w-0 items-center justify-center overflow-x-hidden bg-[#f6f8f7] px-6 py-12">
+        <div className="w-full min-w-0 max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-[#136f63] rounded-xl flex items-center justify-center"><Hexagon size={22} className="text-white" /></div>
             <div><h1 className="font-bold" style={{color:'#17211f'}}>BSC System</h1><p className="text-xs" style={{color:'#6c7774'}}>Insurance Corp</p></div>
@@ -70,12 +70,12 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="label">Email Address</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field" placeholder="Enter your email" required />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field min-w-0 max-w-full" placeholder="Enter your email" required />
             </div>
             <div>
               <label className="label">Password</label>
               <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="input-field pr-10" placeholder="Enter your password" required />
+                <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="input-field min-w-0 max-w-full pr-10" placeholder="Enter your password" required />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{color:'#6c7774'}}>
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
