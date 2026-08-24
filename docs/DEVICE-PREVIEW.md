@@ -1,6 +1,6 @@
 # BSC Management System — Device Preview
 
-**Live application:** <https://bsc-digtal-frontend-uq9p.vercel.app>
+**Live application:** <https://bsc-digital.vercel.app>
 
 These screenshots were captured from the live login page on 23 August 2026. They show the current layout before a user signs in.
 

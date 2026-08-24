@@ -1,19 +1,32 @@
 const prisma = require('./prisma');
 const { sendNotificationEmail } = require('./email');
+const { sendSMS, normalizePhone } = require('./sms');
 
 async function createNotification(userId, title, message, type, linkUrl = null) {
   const notification = await prisma.notification.create({
     data: { userId, title, message, type, linkUrl }
   });
 
-  if (process.env.SMTP_HOST) {
+  if (process.env.SMTP_HOST || process.env.AFROMESSAGE_TOKEN) {
     try {
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true, lastName: true } });
-      if (user && user.email) {
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, phone: true } });
+
+      if (process.env.SMTP_HOST && user && user.email) {
         sendNotificationEmail(user.email, title, message, type, linkUrl);
       }
+
+      if (process.env.AFROMESSAGE_TOKEN && user && user.phone) {
+        const phone = normalizePhone(user.phone);
+        if (phone) {
+          const smsText = `${title}\n${message}`.slice(0, 480);
+          const result = await sendSMS(phone, smsText);
+          if (!result) console.error('[SMS] Notification SMS not delivered.');
+        } else {
+          console.error('[SMS] Invalid phone format for user:', user.email);
+        }
+      }
     } catch (err) {
-      console.error('[EMAIL] Failed to send notification email:', err.message);
+      console.error('[NOTIFY] Failed to deliver notification:', err.message);
     }
   }
 
