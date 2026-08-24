@@ -7,6 +7,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { createAuditLog } = require('../utils/helpers');
 const { validate } = require('../middleware/validate');
 const { sendVerificationEmail } = require('../utils/email');
+const { normalizePhone, sendSMS } = require('../utils/sms');
 const crypto = require('crypto');
 
 const createVerificationToken = () => crypto.randomBytes(32).toString('hex');
@@ -83,7 +84,7 @@ router.post('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT
   validate
 ], async (req, res) => {
   try {
-    const { firstName, lastName, email, password, role, departmentId, managerId } = req.body;
+    const { firstName, lastName, email, password, phone, role, departmentId, managerId } = req.body;
     if (!canManageUser(req.user, role, departmentId)) {
       return res.status(403).json({ error: 'You can only create permitted roles in your assigned department.' });
     }
@@ -93,16 +94,40 @@ router.post('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT
     if (existing) {
       return res.status(400).json({ error: 'Email already exists' });
     }
+    let normalizedPhone = null;
+    if (phone) {
+      normalizedPhone = normalizePhone(phone);
+      if (!normalizedPhone) {
+        return res.status(400).json({ error: 'Enter a valid Ethiopian phone number, e.g. 0912345678.' });
+      }
+      const phoneTaken = await prisma.user.findUnique({ where: { phone: normalizedPhone } });
+      if (phoneTaken) {
+        return res.status(400).json({ error: 'Phone number is already linked to another account.' });
+      }
+    }
     const hashedPassword = await bcrypt.hash(password || 'Password123!', 12);
-    const token = createVerificationToken();
-    const user = await prisma.user.create({
-      data: { firstName, lastName, email: email.toLowerCase(), password: hashedPassword, role, departmentId, managerId,
-        emailVerificationToken: hashVerificationToken(token), emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
-      include: { department: true }
-    });
+    const data = {
+      firstName, lastName, email: email.toLowerCase(), password: hashedPassword,
+      phone: normalizedPhone, role, departmentId, managerId
+    };
+    let verificationEmailToken = null;
+    if (normalizedPhone) {
+      data.emailVerifiedAt = new Date();
+    } else {
+      verificationEmailToken = createVerificationToken();
+      data.emailVerificationToken = hashVerificationToken(verificationEmailToken);
+      data.emailVerificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    }
+    const user = await prisma.user.create({ data, include: { department: true } });
     await createAuditLog(req.user.id, `${req.user.firstName} ${req.user.lastName}`, 'CREATE_USER', 'User', user.id, { email, role });
-    await sendVerificationEmail(user.email, user.firstName, token);
-    const { password: _, ...userWithoutPassword } = user;
+    let smsSent = false;
+    if (normalizedPhone) {
+      smsSent = Boolean(await sendSMS(normalizedPhone,
+        `Hello ${firstName}, your BSC System account has been created. Sign in with ${email.toLowerCase()} using the password given to you by your administrator.`));
+    } else {
+      await sendVerificationEmail(user.email, user.firstName, verificationEmailToken);
+    }
+    const { password: _, ...userWithoutPassword } = { ...user, smsSent };
     res.status(201).json(userWithoutPassword);
   } catch (error) {
     console.error('Create user error:', error);
@@ -118,7 +143,7 @@ router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTME
   validate
 ], async (req, res) => {
   try {
-    const { firstName, lastName, email, role, departmentId, managerId, isActive } = req.body;
+    const { firstName, lastName, email, phone, role, departmentId, managerId, isActive } = req.body;
     const existing = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'User not found' });
     const nextRole = role || existing.role;
@@ -128,7 +153,28 @@ router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTME
     }
     const managerScopeError = await validateManagerScope(req.user, managerId, nextDepartmentId);
     if (managerScopeError) return res.status(403).json({ error: managerScopeError });
+    let normalizedPhone;
+    if (phone !== undefined) {
+      if (!phone) {
+        normalizedPhone = null;
+      } else {
+        normalizedPhone = normalizePhone(phone);
+        if (!normalizedPhone) {
+          return res.status(400).json({ error: 'Enter a valid Ethiopian phone number, e.g. 0912345678.' });
+        }
+        if (normalizedPhone !== existing.phone) {
+          const phoneTaken = await prisma.user.findFirst({ where: { phone: normalizedPhone, id: { not: req.params.id } } });
+          if (phoneTaken) {
+            return res.status(400).json({ error: 'Phone number is already linked to another account.' });
+          }
+        }
+      }
+    }
     const data = { firstName, lastName, email: email?.toLowerCase(), role, departmentId, managerId, isActive };
+    if (phone !== undefined) {
+      data.phone = normalizedPhone;
+      if (normalizedPhone !== existing.phone && normalizedPhone !== null) data.phoneVerifiedAt = null;
+    }
     let emailVerificationToken;
     if (email) {
       emailVerificationToken = createVerificationToken();

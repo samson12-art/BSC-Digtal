@@ -16,7 +16,7 @@ export default function UsersPage() {
   const [filterRole, setFilterRole] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'EMPLOYEE', departmentId: '', managerId: '', isActive: true });
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', role: 'EMPLOYEE', departmentId: '', managerId: '', isActive: true });
   const [allUsers, setAllUsers] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,22 +30,22 @@ export default function UsersPage() {
     finally { setLoading(false); }
   };
 
-  const openCreate = () => { setEditingUser(null); setForm({ firstName: '', lastName: '', email: '', password: 'Password123!', role: 'EMPLOYEE', departmentId: currentUser?.role === 'CEO' ? '' : currentUser?.departmentId || '', managerId: '', isActive: true }); setShowModal(true); };
+  const openCreate = () => { setEditingUser(null); setForm({ firstName: '', lastName: '', email: '', phone: '', password: 'Password123!', role: 'EMPLOYEE', departmentId: currentUser?.role === 'CEO' ? '' : currentUser?.departmentId || '', managerId: '', isActive: true }); setShowModal(true); };
 
-  const openEdit = (user) => { setEditingUser(user); setForm({ firstName: user.firstName, lastName: user.lastName, email: user.email, password: '', role: user.role, departmentId: user.departmentId || '', managerId: user.managerId || '', isActive: user.isActive }); setShowModal(true); };
+  const openEdit = (user) => { setEditingUser(user); setForm({ firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone || '', password: '', role: user.role, departmentId: user.departmentId || '', managerId: user.managerId || '', isActive: user.isActive }); setShowModal(true); };
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setSubmitting(true);
     try {
       if (editingUser) { const data = { ...form }; if (!data.password) delete data.password; await api.put(`/users/${editingUser.id}`, data); toast.success('User updated'); }
-      else { await api.post('/users', form); toast.success('User created'); }
+      else { const res = await api.post('/users', form); toast.success(res.data?.smsSent ? 'User created - SMS notification sent' : 'User created'); }
       setShowModal(false); fetchData();
     } catch (err) { toast.error(err.response?.data?.error || 'Operation failed'); }
     finally { setSubmitting(false); }
   };
 
   const filtered = users.filter(u => {
-    const matchSearch = !search || `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || `${u.firstName} ${u.lastName} ${u.email} ${u.phone || ''}`.toLowerCase().includes(search.toLowerCase());
     const matchRole = !filterRole || u.role === filterRole;
     return matchSearch && matchRole;
   });
@@ -86,7 +86,7 @@ export default function UsersPage() {
             <tbody className="divide-y divide-gray-100">
               {filtered.map(u => (
                 <tr key={u.id} className="hover:bg-gray-50">
-                  <td className="table-cell"><div className="flex items-center gap-3"><div className="w-9 h-9 bg-primary-100 text-primary-800 rounded-full flex items-center justify-center text-sm font-bold">{u.firstName?.[0]}{u.lastName?.[0]}</div><div><p className="font-medium text-gray-900">{u.firstName} {u.lastName}</p><p className="text-xs text-gray-500">{u.email}</p></div></div></td>
+                  <td className="table-cell"><div className="flex items-center gap-3"><div className="w-9 h-9 bg-primary-100 text-primary-800 rounded-full flex items-center justify-center text-sm font-bold">{u.firstName?.[0]}{u.lastName?.[0]}</div><div><p className="font-medium text-gray-900">{u.firstName} {u.lastName}</p><p className="text-xs text-gray-500">{u.email}{u.phone ? ` · ${u.phone}` : ''}</p></div></div></td>
                   <td className="table-cell"><span className={`badge ${roleColors[u.role]}`}>{u.role?.replace(/_/g, ' ')}</span></td>
                   <td className="table-cell text-sm">{u.department?.name || '-'}</td>
                   <td className="table-cell text-sm">{u.manager ? `${u.manager.firstName} ${u.manager.lastName}` : '-'}</td>
@@ -104,6 +104,7 @@ export default function UsersPage() {
             <div><label className="label">First Name *</label><input value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} className="input-field" required /></div>
             <div><label className="label">Last Name *</label><input value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} className="input-field" required /></div>
             <div><label className="label">Email *</label><input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="input-field" required /></div>
+            <div><label className="label">Phone</label><input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="input-field" placeholder="0912345678" /></div>
             <div><label className="label">{editingUser ? 'New Password' : 'Password *'}</label><input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="input-field" required={!editingUser} placeholder={editingUser ? 'Leave blank to keep current' : ''} /></div>
             <div><label className="label">Role *</label><select value={form.role} onChange={e => setForm({...form, role: e.target.value})} className="input-field" required>{allowedRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select></div>
             <div><label className="label">Department</label><select value={form.departmentId} onChange={e => setForm({...form, departmentId: e.target.value})} className="input-field" disabled={currentUser?.role !== 'CEO'} required={currentUser?.role !== 'CEO'}><option value="">Select department</option>{availableDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>

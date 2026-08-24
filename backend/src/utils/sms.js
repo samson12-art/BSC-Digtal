@@ -46,4 +46,8 @@ function verifyPhoneCode(phone, code) {
   return afroMessageRequest('/verify', { to: phone, code: String(code) });
 }
 
-module.exports = { normalizePhone, sendPhoneVerification, verifyPhoneCode };
+function sendSMS(phone, message) {
+  return afroMessageRequest('/send', { to: phone, message });
+}
+
+module.exports = { normalizePhone, sendPhoneVerification, verifyPhoneCode, sendSMS };
