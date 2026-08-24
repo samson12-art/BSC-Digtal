@@ -71,6 +71,32 @@ function buildNotificationEmail(title, message, type, linkUrl) {
 
 async function sendEmail(to, subject, html, text) {
   try {
+    if (process.env.RESEND_API_KEY) {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: process.env.RESEND_FROM || 'BSC System <onboarding@resend.dev>',
+          to: [to],
+          subject,
+          html,
+          text
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`Resend API returned ${response.status}: ${await response.text()}`);
+      }
+      return response.json();
+    }
+
+    if (!process.env.SMTP_HOST) {
+      console.warn('[EMAIL] No email provider configured. Set RESEND_API_KEY or SMTP_HOST.');
+      return null;
+    }
+
     const transport = getTransporter();
     const info = await transport.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER || 'BSC System <noreply@bsc-system.com>',
@@ -79,9 +105,6 @@ async function sendEmail(to, subject, html, text) {
       html,
       text,
     });
-    if (!process.env.SMTP_HOST) {
-      console.log('[EMAIL-DEV] Message stored (no SMTP configured):', info.messageId);
-    }
     return info;
   } catch (error) {
     console.error('[EMAIL] Failed to send:', error.message);

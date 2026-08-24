@@ -703,7 +703,11 @@ JWT_EXPIRES_IN="7d"
 PORT=5000
 FRONTEND_URL="http://localhost:5173"
 
-# Email (optional — enables email notifications)
+# Email (recommended for Render free services)
+RESEND_API_KEY="re_your_resend_api_key"
+RESEND_FROM="BSC System <onboarding@resend.dev>"
+
+# SMTP fallback (requires a Render paid service)
 SMTP_HOST="smtp.gmail.com"
 SMTP_PORT=587
 SMTP_USER="your-email@gmail.com"
@@ -754,6 +758,8 @@ After seeding, the following accounts are available:
 | `JWT_EXPIRES_IN` | No | `7d` | Token expiration duration |
 | `PORT` | No | `5000` | Backend server port |
 | `FRONTEND_URL` | No | `http://localhost:5173` | Frontend URL for CORS |
+| `RESEND_API_KEY` | No | — | Resend API key; preferred email delivery method on Render Free |
+| `RESEND_FROM` | No | `BSC System <onboarding@resend.dev>` | Verified Resend sender address |
 | `SMTP_HOST` | No | — | SMTP server host (enables email) |
 | `SMTP_PORT` | No | `587` | SMTP server port |
 | `SMTP_USER` | No | — | SMTP username |

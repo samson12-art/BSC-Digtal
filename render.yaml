@@ -26,6 +26,10 @@ services:
         sync: false
       - key: RESET_INITIAL_CEO_PASSWORD
         value: "false"
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        value: BSC System <onboarding@resend.dev>
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
