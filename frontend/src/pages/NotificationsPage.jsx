@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { Bell, CheckCheck } from 'lucide-react';
+import { ArrowRight, Bell, CheckCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function NotificationsPage() {
@@ -37,12 +37,12 @@ export default function NotificationsPage() {
   };
 
   const getIcon = (type) => {
-    const icons = { APPROVAL: '\u2713', REJECTION: '\u2715', REVISION: '\u21BA', REVIEW_REQUIRED: '\uD83D\uDCCB', COMMENT: '\uD83D\uDCAC' };
+    const icons = { APPROVAL: '\u2713', REJECTION: '\u2715', REVISION: '\u21BA', REVIEW_REQUIRED: '\uD83D\uDCCB', COMMENT: '\uD83D\uDCAC', ACCOUNT_APPROVAL: '\uD83D\uDC64' };
     return icons[type] || '\uD83D\uDCCC';
   };
 
   const getColor = (type) => {
-    const colors = { APPROVAL: 'bg-green-100 text-green-700', REJECTION: 'bg-red-100 text-red-700', REVISION: 'bg-amber-100 text-amber-700', REVIEW_REQUIRED: 'bg-blue-100 text-blue-700', COMMENT: 'bg-purple-100 text-purple-700' };
+    const colors = { APPROVAL: 'bg-green-100 text-green-700', REJECTION: 'bg-red-100 text-red-700', REVISION: 'bg-amber-100 text-amber-700', REVIEW_REQUIRED: 'bg-blue-100 text-blue-700', COMMENT: 'bg-purple-100 text-purple-700', ACCOUNT_APPROVAL: 'bg-amber-100 text-amber-700' };
     return colors[type] || 'bg-gray-100 text-gray-700';
   };
 
@@ -67,6 +67,7 @@ export default function NotificationsPage() {
                   <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{new Date(n.createdAt).toLocaleString()}</span>
                 </div>
                 <p className="text-sm text-gray-600 mt-0.5">{n.message}</p>
+                {n.linkUrl && <button type="button" onClick={(event) => { event.stopPropagation(); openNotification(n); }} className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[#136f63] hover:text-[#0e554c]">Review employee <ArrowRight size={15} /></button>}
               </div>
               {!n.isRead && <div className="w-2.5 h-2.5 bg-primary-800 rounded-full flex-shrink-0 mt-2" />}
             </div>
