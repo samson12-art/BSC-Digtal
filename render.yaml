@@ -20,6 +20,16 @@ services:
         sync: false
       - key: API_URL
         sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_TENANT_ID
+        value: common
       - key: INITIAL_CEO_EMAIL
         value: samsonyeshanew@gmail.com
       - key: INITIAL_CEO_PASSWORD

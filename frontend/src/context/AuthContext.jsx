@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../lib/api';
 
 const AuthContext = createContext(null);
@@ -28,6 +28,15 @@ export function AuthProvider({ children }) {
     return res.data;
   };
 
+  const completeOAuthLogin = useCallback(async (code) => {
+    const res = await api.post('/auth/oauth/exchange', { code });
+    localStorage.setItem('token', res.data.token);
+    localStorage.setItem('user', JSON.stringify(res.data.user));
+    setToken(res.data.token);
+    setUser(res.data.user);
+    return res.data;
+  }, []);
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -46,7 +55,7 @@ export function AuthProvider({ children }) {
   const isManager = () => user && ['DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'].includes(user.role);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, refreshUser, isRole, canApprove, isManager }}>
+    <AuthContext.Provider value={{ user, token, loading, login, completeOAuthLogin, logout, refreshUser, isRole, canApprove, isManager }}>
       {children}
     </AuthContext.Provider>
   );
