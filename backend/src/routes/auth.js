@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const { body } = require('express-validator');
 const prisma = require('../utils/prisma');
 const { authenticate } = require('../middleware/auth');
-const { createAuditLog } = require('../utils/helpers');
+const { createAuditLog, createNotification } = require('../utils/helpers');
 const { validate } = require('../middleware/validate');
 const { sendVerificationEmail } = require('../utils/email');
 const { normalizePhone, sendPhoneVerification, verifyPhoneCode } = require('../utils/sms');
@@ -76,6 +76,14 @@ router.get('/oauth/:provider/callback', async (req, res) => {
         password: await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12), role: 'EMPLOYEE',
         emailVerifiedAt: new Date(), isApproved: false
       } });
+      const ceos = await prisma.user.findMany({ where: { role: 'CEO', isActive: true, isApproved: true }, select: { id: true } });
+      await Promise.all(ceos.map((ceo) => createNotification(
+        ceo.id,
+        'New employee approval required',
+        `${user.firstName} ${user.lastName} registered with ${provider} and is awaiting approval.`,
+        'ACCOUNT_APPROVAL',
+        '/users'
+      )));
     }
     if (!user.isActive) return oauthError(res, 'Your account is not authorized to access this system. Contact your administrator.');
     const code = jwt.sign({ userId: user.id, type: 'oauth-code' }, process.env.JWT_SECRET, { expiresIn: '60s' });
@@ -157,6 +165,14 @@ router.post('/register', [
       password: await bcrypt.hash(password, 12), role: 'EMPLOYEE', emailVerifiedAt: new Date(), isApproved: false
     } });
     await createAuditLog(user.id, `${user.firstName} ${user.lastName}`, 'REGISTER', 'User', user.id, { method: 'password' }, req.ip);
+    const ceos = await prisma.user.findMany({ where: { role: 'CEO', isActive: true, isApproved: true }, select: { id: true } });
+    await Promise.all(ceos.map((ceo) => createNotification(
+      ceo.id,
+      'New employee approval required',
+      `${user.firstName} ${user.lastName} registered as ${user.position} and is awaiting approval.`,
+      'ACCOUNT_APPROVAL',
+      '/users'
+    )));
     res.status(201).json({ message: 'Account created. It is awaiting administrator approval.' });
   } catch (error) {
     console.error('Registration error:', error);
