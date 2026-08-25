@@ -3,7 +3,7 @@ import api from '../lib/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
 import { roleColors, roles } from '../lib/utils';
-import { Plus, Edit, Search } from 'lucide-react';
+import { Plus, Edit, Search, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
@@ -66,6 +66,15 @@ export default function UsersPage() {
     || (currentUser?.role === 'DEPARTMENT_MANAGER'
       && target.role === 'EMPLOYEE'
       && target.departmentId === currentUser.departmentId);
+  const updateApproval = async (target, approved) => {
+    const action = approved ? 'approve' : 'reject';
+    if (!approved && !window.confirm(`Reject ${target.firstName} ${target.lastName}? Their account will be deactivated.`)) return;
+    try {
+      await api.put(`/users/${target.id}`, approved ? { isApproved: true } : { isActive: false, isApproved: false });
+      toast.success(approved ? 'Employee approved' : 'Employee rejected and deactivated');
+      fetchData();
+    } catch (err) { toast.error(err.response?.data?.error || `Could not ${action} employee`); }
+  };
 
   if (loading) return <LoadingSpinner className="h-96" size="lg" />;
 
@@ -91,7 +100,7 @@ export default function UsersPage() {
                   <td className="table-cell text-sm">{u.department?.name || '-'}</td>
                   <td className="table-cell text-sm">{u.manager ? `${u.manager.firstName} ${u.manager.lastName}` : '-'}</td>
                   <td className="table-cell"><span className={`badge ${!u.isActive ? 'bg-red-100 text-red-800' : u.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{!u.isActive ? 'Inactive' : u.isApproved ? 'Approved' : 'Pending approval'}</span></td>
-                  <td className="table-cell">{canEditUser(u) && <button onClick={() => openEdit(u)} className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit size={16} className="text-gray-600" /></button>}</td>
+                  <td className="table-cell"><div className="flex items-center gap-1">{canEditUser(u) && u.isActive && !u.isApproved && <><button onClick={() => updateApproval(u, true)} title="Approve employee" className="p-1.5 text-green-700 hover:bg-green-50 rounded-lg"><Check size={16} /></button><button onClick={() => updateApproval(u, false)} title="Reject employee" className="p-1.5 text-red-700 hover:bg-red-50 rounded-lg"><X size={16} /></button></>}{canEditUser(u) && <button onClick={() => openEdit(u)} title="View or edit employee" className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit size={16} className="text-gray-600" /></button>}</div></td>
                 </tr>
               ))}
             </tbody>

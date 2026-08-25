@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Bell, CheckCheck } from 'lucide-react';
@@ -8,6 +9,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => { fetchNotifications(); }, []);
 
@@ -23,6 +25,10 @@ export default function NotificationsPage() {
   const markAsRead = async (id) => {
     try { await api.put(`/notifications/${id}/read`); fetchNotifications(); }
     catch (err) { console.error(err); }
+  };
+  const openNotification = async (notification) => {
+    if (!notification.isRead) await markAsRead(notification.id);
+    if (notification.linkUrl) navigate(notification.linkUrl);
   };
 
   const markAllRead = async () => {
@@ -53,7 +59,7 @@ export default function NotificationsPage() {
       ) : (
         <div className="space-y-2">
           {notifications.map(n => (
-            <div key={n.id} className={`card flex items-start gap-4 cursor-pointer transition-all ${!n.isRead ? 'border-l-4 border-l-primary-800 bg-primary-50/30' : ''}`} onClick={() => !n.isRead && markAsRead(n.id)}>
+            <div key={n.id} className={`card flex items-start gap-4 cursor-pointer transition-all ${!n.isRead ? 'border-l-4 border-l-primary-800 bg-primary-50/30' : ''}`} onClick={() => openNotification(n)}>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${getColor(n.type)}`}>{getIcon(n.type)}</div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">

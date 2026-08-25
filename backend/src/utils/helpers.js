@@ -7,7 +7,7 @@ async function createNotification(userId, title, message, type, linkUrl = null) 
     data: { userId, title, message, type, linkUrl }
   });
 
-  if (process.env.SMTP_HOST || process.env.AFROMESSAGE_TOKEN) {
+  if (process.env.RESEND_API_KEY || process.env.SMTP_HOST || process.env.AFROMESSAGE_TOKEN) {
     try {
       const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, phone: true } });
 
