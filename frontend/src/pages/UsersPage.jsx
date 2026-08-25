@@ -16,7 +16,7 @@ export default function UsersPage() {
   const [filterRole, setFilterRole] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', role: 'EMPLOYEE', departmentId: '', managerId: '', isActive: true });
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', role: 'EMPLOYEE', departmentId: '', managerId: '', isActive: true, isApproved: true });
   const [allUsers, setAllUsers] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,9 +30,9 @@ export default function UsersPage() {
     finally { setLoading(false); }
   };
 
-  const openCreate = () => { setEditingUser(null); setForm({ firstName: '', lastName: '', email: '', phone: '', password: 'Password123!', role: 'EMPLOYEE', departmentId: currentUser?.role === 'CEO' ? '' : currentUser?.departmentId || '', managerId: '', isActive: true }); setShowModal(true); };
+  const openCreate = () => { setEditingUser(null); setForm({ firstName: '', lastName: '', email: '', phone: '', password: 'Password123!', role: 'EMPLOYEE', departmentId: currentUser?.role === 'CEO' ? '' : currentUser?.departmentId || '', managerId: '', isActive: true, isApproved: true }); setShowModal(true); };
 
-  const openEdit = (user) => { setEditingUser(user); setForm({ firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone || '', password: '', role: user.role, departmentId: user.departmentId || '', managerId: user.managerId || '', isActive: user.isActive }); setShowModal(true); };
+  const openEdit = (user) => { setEditingUser(user); setForm({ firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone || '', password: '', role: user.role, departmentId: user.departmentId || '', managerId: user.managerId || '', isActive: user.isActive, isApproved: user.isApproved }); setShowModal(true); };
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setSubmitting(true);
@@ -90,7 +90,7 @@ export default function UsersPage() {
                   <td className="table-cell"><span className={`badge ${roleColors[u.role]}`}>{u.role?.replace(/_/g, ' ')}</span></td>
                   <td className="table-cell text-sm">{u.department?.name || '-'}</td>
                   <td className="table-cell text-sm">{u.manager ? `${u.manager.firstName} ${u.manager.lastName}` : '-'}</td>
-                  <td className="table-cell"><span className={`badge ${u.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{u.isActive ? 'Active' : 'Inactive'}</span></td>
+                  <td className="table-cell"><span className={`badge ${!u.isActive ? 'bg-red-100 text-red-800' : u.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{!u.isActive ? 'Inactive' : u.isApproved ? 'Approved' : 'Pending approval'}</span></td>
                   <td className="table-cell">{canEditUser(u) && <button onClick={() => openEdit(u)} className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit size={16} className="text-gray-600" /></button>}</td>
                 </tr>
               ))}
@@ -110,6 +110,7 @@ export default function UsersPage() {
             <div><label className="label">Department</label><select value={form.departmentId} onChange={e => setForm({...form, departmentId: e.target.value})} className="input-field" disabled={currentUser?.role !== 'CEO'} required={currentUser?.role !== 'CEO'}><option value="">Select department</option>{availableDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
             <div><label className="label">Reports To</label><select value={form.managerId} onChange={e => setForm({...form, managerId: e.target.value})} className="input-field"><option value="">Select manager</option>{allUsers.filter(u => u.id !== editingUser?.id).map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.role?.replace(/_/g, ' ')})</option>)}</select></div>
             <div><label className="label">Status</label><select value={form.isActive} onChange={e => setForm({...form, isActive: e.target.value === 'true'})} className="input-field"><option value="true">Active</option><option value="false">Inactive</option></select></div>
+            <div><label className="label">Account Approval</label><select value={form.isApproved} onChange={e => setForm({...form, isApproved: e.target.value === 'true'})} className="input-field"><option value="true">Approved</option><option value="false">Pending approval</option></select></div>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Cancel</button>

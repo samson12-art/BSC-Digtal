@@ -143,7 +143,7 @@ router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTME
   validate
 ], async (req, res) => {
   try {
-    const { firstName, lastName, email, phone, role, departmentId, managerId, isActive } = req.body;
+    const { firstName, lastName, email, phone, role, departmentId, managerId, isActive, isApproved } = req.body;
     const existing = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'User not found' });
     const nextRole = role || existing.role;
@@ -170,7 +170,7 @@ router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTME
         }
       }
     }
-    const data = { firstName, lastName, email: email?.toLowerCase(), role, departmentId, managerId, isActive };
+    const data = { firstName, lastName, email: email?.toLowerCase(), role, departmentId, managerId, isActive, isApproved };
     if (phone !== undefined) {
       data.phone = normalizedPhone;
       if (normalizedPhone !== existing.phone && normalizedPhone !== null) data.phoneVerifiedAt = null;

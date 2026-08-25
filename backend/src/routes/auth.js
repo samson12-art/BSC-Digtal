@@ -67,8 +67,17 @@ router.get('/oauth/:provider/callback', async (req, res) => {
     const profile = await profileResponse.json();
     const email = (profile.email || profile.mail || profile.userPrincipalName || '').toLowerCase();
     if (!email) throw new Error('Your provider account does not have an email address');
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !user.isActive) return oauthError(res, 'Your account is not authorized to access this system. Contact your administrator.');
+    let user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      const fullName = profile.name || profile.displayName || `${profile.given_name || profile.givenName || ''} ${profile.family_name || profile.surname || ''}`.trim() || email.split('@')[0];
+      const [firstName, ...lastNameParts] = fullName.trim().split(/\s+/);
+      user = await prisma.user.create({ data: {
+        firstName: firstName || 'Employee', lastName: lastNameParts.join(' ') || 'User', email,
+        password: await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12), role: 'EMPLOYEE',
+        emailVerifiedAt: new Date(), isApproved: false
+      } });
+    }
+    if (!user.isActive) return oauthError(res, 'Your account is not authorized to access this system. Contact your administrator.');
     const code = jwt.sign({ userId: user.id, type: 'oauth-code' }, process.env.JWT_SECRET, { expiresIn: '60s' });
     res.redirect(`${frontendUrl()}/login?oauthCode=${encodeURIComponent(code)}`);
   } catch (error) {

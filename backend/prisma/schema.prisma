@@ -66,6 +66,7 @@ model User {
   manager        User?     @relation("ReportingHierarchy", fields: [managerId], references: [id])
   directReports  User[]    @relation("ReportingHierarchy")
   isActive       Boolean   @default(true)
+  isApproved     Boolean   @default(true)
   emailVerifiedAt DateTime?
   emailVerificationToken String? @unique
   emailVerificationExpiresAt DateTime?
