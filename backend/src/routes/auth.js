@@ -129,6 +129,30 @@ router.post('/login', [
   }
 });
 
+router.post('/register', [
+  body('firstName').trim().isLength({ min: 1, max: 80 }).withMessage('First name is required'),
+  body('lastName').trim().isLength({ min: 1, max: 80 }).withMessage('Last name is required'),
+  body('email').isEmail().withMessage('Valid email is required'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  validate
+], async (req, res) => {
+  try {
+    const email = req.body.email.toLowerCase();
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return res.status(409).json({ error: 'An account already exists for this email. Please sign in.' });
+    const user = await prisma.user.create({ data: {
+      firstName: req.body.firstName.trim(), lastName: req.body.lastName.trim(), email,
+      password: await bcrypt.hash(req.body.password, 12), role: 'EMPLOYEE',
+      emailVerifiedAt: new Date(), isApproved: false
+    } });
+    await createAuditLog(user.id, `${user.firstName} ${user.lastName}`, 'REGISTER', 'User', user.id, { method: 'password' }, req.ip);
+    res.status(201).json({ message: 'Account created. It is awaiting administrator approval.' });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Unable to create account' });
+  }
+});
+
 router.get('/verify-email', async (req, res) => {
   const token = typeof req.query.token === 'string' ? req.query.token : '';
   if (!token) return res.status(400).json({ error: 'Verification token is required' });
