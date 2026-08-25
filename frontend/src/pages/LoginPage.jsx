@@ -1,95 +1,35 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Hexagon, Eye, EyeOff, LogIn } from 'lucide-react';
+import { ArrowRight, BarChart3, Check, ChevronDown, FileText, Goal, Hexagon, LockKeyhole, Mail, Moon, ShieldCheck, Sun, UsersRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../lib/api';
+
+const features = [
+  { icon: Goal, title: 'Strategic Alignment', text: 'Align organizational goals with strategic objectives.' },
+  { icon: BarChart3, title: 'KPI Tracking', text: 'Track KPIs in real-time and analyze performance trends.' },
+  { icon: UsersRound, title: 'Approval Workflow', text: 'Streamlined hierarchical approvals and notifications.' },
+  { icon: FileText, title: 'Dashboards & Reports', text: 'Real-time dashboards and actionable reports.' },
+];
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
+  const [dark, setDark] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); try { await login(email, password); toast.success('Welcome back!'); navigate('/'); } catch (err) { toast.error(err.response?.data?.error || 'Login failed'); } finally { setLoading(false); } };
+  const resendVerification = async () => { if (!email) return toast.error('Enter your email address first.'); try { await api.post('/auth/resend-verification', { email }); toast.success('If your account needs verification, a new link has been sent.'); } catch { toast.error('Could not send a verification email. Please try again.'); } };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await login(email, password);
-      toast.success('Welcome back!');
-      navigate('/');
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resendVerification = async () => {
-    if (!email) return toast.error('Enter your email address first.');
-    try {
-      await api.post('/auth/resend-verification', { email });
-      toast.success('If your account needs verification, a new link has been sent.');
-    } catch {
-      toast.error('Could not send a verification email. Please try again.');
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex bg-[#f6f8f7]">
-      <div className="hidden lg:flex lg:w-1/2 bg-[#101918] relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.03]">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-[#136f63] rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-teal-400 rounded-full blur-3xl" />
-        </div>
-        <div className="relative z-10 flex flex-col justify-center px-16">
-          <div className="w-14 h-14 bg-[#136f63] rounded-xl flex items-center justify-center mb-8">
-            <Hexagon size={28} className="text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-3">Balanced Scorecard<br/>Management System</h1>
-          <p className="text-base text-[#8a9e97] mb-8">Enterprise Performance Management & Strategic Planning Platform</p>
-          <div className="space-y-4 text-[#8a9e97]">
-            <div className="flex items-center gap-3"><div className="w-1.5 h-1.5 bg-[#136f63] rounded-full" /><span>Strategic Objective Alignment</span></div>
-            <div className="flex items-center gap-3"><div className="w-1.5 h-1.5 bg-[#136f63] rounded-full" /><span>KPI Tracking & Performance Analytics</span></div>
-            <div className="flex items-center gap-3"><div className="w-1.5 h-1.5 bg-[#136f63] rounded-full" /><span>Hierarchical Approval Workflow</span></div>
-            <div className="flex items-center gap-3"><div className="w-1.5 h-1.5 bg-[#136f63] rounded-full" /><span>Role-Based Access Control</span></div>
-            <div className="flex items-center gap-3"><div className="w-1.5 h-1.5 bg-[#136f63] rounded-full" /><span>Real-time Dashboards & Reports</span></div>
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-1 min-w-0 items-center justify-center overflow-x-hidden bg-[#f6f8f7] px-6 py-12">
-        <div className="w-full min-w-0 max-w-md">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-[#136f63] rounded-xl flex items-center justify-center"><Hexagon size={22} className="text-white" /></div>
-            <div><h1 className="font-bold" style={{color:'#17211f'}}>BSC System</h1><p className="text-xs" style={{color:'#6c7774'}}>Insurance Corp</p></div>
-          </div>
-          <h2 className="text-2xl font-bold mb-1" style={{color:'#17211f'}}>Sign in to your account</h2>
-          <p className="mb-8" style={{color:'#6c7774'}}>Access your balanced scorecard dashboard</p>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="label">Email Address</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field min-w-0 max-w-full" placeholder="Enter your email" required />
-            </div>
-            <div>
-              <label className="label">Password</label>
-              <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="input-field min-w-0 max-w-full pr-10" placeholder="Enter your password" required />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{color:'#6c7774'}}>
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-base">
-              {loading ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" /> : <><LogIn size={18} />Sign In</>}
-            </button>
-          </form>
-          <button type="button" onClick={resendVerification} className="mt-4 text-sm font-medium text-[#136f63] hover:text-[#0e554c]">
-            Resend email verification link
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  return <main className={`login-page ${dark ? 'login-page--dark' : ''}`}>
+    <header className="login-header"><div className="login-brand"><Hexagon aria-hidden="true" /><span>BSC Management System</span></div><div className="login-controls"><button className="theme-toggle" type="button" onClick={() => setDark(!dark)} aria-label="Toggle colour theme"><Sun size={18} className={!dark ? 'active' : ''} /><Moon size={18} className={dark ? 'active' : ''} /></button><button className="language-button" type="button">EN <ChevronDown size={15} /></button></div></header>
+    <section className="login-content">
+      <aside className="login-features" aria-label="Platform features">{features.map(({ icon: Icon, title, text }) => <div className="login-feature" key={title}><span className="feature-icon"><Icon size={26} /></span><div><h2>{title}</h2><p>{text}</p></div></div>)}</aside>
+      <div className="login-card-wrap"><section className="login-card" aria-labelledby="login-heading"><div className="login-card-logo"><Hexagon size={47} /></div><h1 id="login-heading">Welcome Back</h1><p className="login-subtitle">Sign in to your BSC Management System</p><form onSubmit={handleSubmit}><label className="login-label" htmlFor="login-email">Email Address</label><div className="login-input-wrap"><Mail size={18} /><input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" required /></div><label className="login-label" htmlFor="login-password">Password</label><div className="login-input-wrap"><LockKeyhole size={18} /><input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" required /></div><div className="login-options"><label className="remember-check"><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /><span><Check size={12} /></span>Remember me</label><button type="button" onClick={resendVerification}>Forgot password?</button></div><button type="submit" disabled={loading} className="login-submit">{loading ? 'Signing in…' : <>Sign In <ArrowRight size={21} /></>}</button></form><div className="continue-divider"><span>or continue with</span></div><div className="social-logins"><button type="button" onClick={() => toast('Google sign-in is not configured yet.')}><b className="google-mark">G</b> Google</button><button type="button" onClick={() => toast('Microsoft sign-in is not configured yet.')}><span className="microsoft-mark"><i /><i /><i /><i /></span> Microsoft</button></div><p className="contact-admin">Don't have an account? <button type="button" onClick={resendVerification}>Contact your administrator</button></p></section></div>
+      <aside className="login-visual" aria-hidden="true"><div className="visual-glow" /><div className="visual-monitor"><div className="monitor-top"><i /><i /><i /></div><div className="chart-line" /><div className="chart-bars"><i /><i /><i /><i /><i /><i /></div></div><div className="visual-kpi"><small>KPI Progress</small><b>78%</b><div className="donut" /></div></aside>
+    </section>
+    <footer className="login-footer"><div><ShieldCheck size={24} /><p><b>Secure</b><span>Your data is always protected</span></p></div><div><Check size={24} /><p><b>Reliable</b><span>99.9% system uptime</span></p></div><div><BarChart3 size={24} /><p><b>Scalable</b><span>Built for growth and performance</span></p></div><small>© 2025 BSC Management System. All rights reserved.</small></footer>
+  </main>;
 }
