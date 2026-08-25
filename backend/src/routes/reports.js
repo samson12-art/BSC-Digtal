@@ -252,7 +252,7 @@ router.get('/excel/:type/:id?', authenticate, async (req, res) => {
     const planYear = plans.find(plan => plan.planYear)?.planYear || new Date().getFullYear();
     const reportName = req.params.type === 'department' ? `${info?.name || 'Department'} BSC Annual Plan` : req.params.type === 'individual' ? `${info?.firstName || ''} ${info?.lastName || ''} BSC Annual Plan` : 'Corporate BSC Annual Plan';
 
-    annual.mergeCells('B1:V1'); annual.mergeCells('B2:V2'); annual.mergeCells('B3:V3');
+    annual.mergeCells('B1:X1'); annual.mergeCells('B2:X2'); annual.mergeCells('B3:X3');
     annual.getCell('B1').value = 'BSC MANAGEMENT SYSTEM';
     annual.getCell('B2').value = `FOR BUDGET YEAR ${planYear}/${planYear + 1}`;
     annual.getCell('B3').value = reportName;
@@ -264,11 +264,11 @@ router.get('/excel/:type/:id?', authenticate, async (req, res) => {
     });
     [1, 2, 3].forEach(rowNumber => { annual.getRow(rowNumber).height = 24; });
 
-    const topHeaders = ['Perspectives', 'NO.', 'Strategic Themes, Objectives and Targets', 'Annual Weight in %', 'Measurement', 'Target', '1st Quarter', '', '', '2nd Quarter', '', '', '3rd Quarter', '', '', '4th Quarter', '', '', 'Summarized Objectives', 'Responsible Body', 'KPI'];
+    const topHeaders = ['Perspectives', 'NO.', 'Strategic Themes, Objectives and Targets', 'Annual Weight in %', 'Measurement', 'Target', '1st Quarter', '', '', '2nd Quarter', '', '', '3rd Quarter', '', '', '4th Quarter', '', '', 'Summarized Objectives', 'Responsible Body', 'KPI', 'Plan Owner', 'Actual Result'];
     topHeaders.forEach((header, index) => { annual.getCell(4, index + 2).value = header; });
     months.forEach((month, index) => { annual.getCell(5, index + 8).value = month; });
-    ['B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:F5', 'G4:G5', 'H4:J4', 'K4:M4', 'N4:P4', 'Q4:S4', 'T4:T5', 'U4:U5', 'V4:V5'].forEach(range => annual.mergeCells(range));
-    for (let rowNumber = 4; rowNumber <= 5; rowNumber++) for (let column = 2; column <= 22; column++) {
+    ['B4:B5', 'C4:C5', 'D4:D5', 'E4:E5', 'F4:F5', 'G4:G5', 'H4:J4', 'K4:M4', 'N4:P4', 'Q4:S4', 'T4:T5', 'U4:U5', 'V4:V5', 'W4:W5', 'X4:X5'].forEach(range => annual.mergeCells(range));
+    for (let rowNumber = 4; rowNumber <= 5; rowNumber++) for (let column = 2; column <= 24; column++) {
       const cell = annual.getCell(rowNumber, column);
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: darkBlue } };
@@ -276,24 +276,25 @@ router.get('/excel/:type/:id?', authenticate, async (req, res) => {
       cell.border = border;
     }
     annual.getRow(4).height = 36; annual.getRow(5).height = 30;
-    [20, 8, 38, 13, 14, 16, ...Array(12).fill(13), 34, 23, 42].forEach((width, index) => { annual.getColumn(index + 2).width = width; });
+    [20, 8, 38, 13, 14, 16, ...Array(12).fill(13), 34, 23, 42, 24, 16].forEach((width, index) => { annual.getColumn(index + 2).width = width; });
 
     let outputRow = 6;
     Object.entries(perspectiveNames).forEach(([perspective, label]) => {
       const group = plans.filter(plan => plan.perspective === perspective);
       if (!group.length) return;
-      annual.mergeCells(`B${outputRow}:V${outputRow}`);
+      annual.mergeCells(`B${outputRow}:X${outputRow}`);
       const section = annual.getCell(`B${outputRow}`);
       section.value = label; section.font = { bold: true }; section.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: lightBlue } }; section.alignment = { vertical: 'middle' }; section.border = border;
       annual.getRow(outputRow).height = 22; outputRow++;
       group.forEach((plan, index) => {
         const schedule = plan.monthlyTargets || {};
-        const values = [label, plan.objectiveNumber || String(index + 1), `${plan.strategicTheme ? `${plan.strategicTheme}: ` : ''}${plan.strategicObjective || plan.title}`, plan.weight, plan.measurementUnit || '-', plan.target, ...months.map(month => schedule[month] ?? ''), plan.strategicInitiative || '-', plan.department?.name || info?.department?.name || '-', plan.kpiName || '-'];
+        const ownerName = plan.owner ? `${plan.owner.firstName} ${plan.owner.lastName}` : req.params.type === 'individual' && info ? `${info.firstName} ${info.lastName}` : '-';
+        const values = [label, plan.objectiveNumber || String(index + 1), `${plan.strategicTheme ? `${plan.strategicTheme}: ` : ''}${plan.strategicObjective || plan.title}`, plan.weight, plan.measurementUnit || '-', plan.target, ...months.map(month => schedule[month] ?? ''), plan.strategicInitiative || '-', plan.department?.name || info?.department?.name || '-', plan.kpiName || '-', ownerName, plan.actualResult];
         values.forEach((value, index) => {
           const cell = annual.getCell(outputRow, index + 2);
           cell.value = value; cell.alignment = { vertical: 'top', wrapText: true }; cell.border = border;
           if (index === 3) cell.numFmt = '0.00';
-          if (index >= 5 && index <= 17 && typeof value === 'number') cell.numFmt = '#,##0.00';
+          if ((index >= 5 && index <= 17) || index === 22) if (typeof value === 'number') cell.numFmt = '#,##0.00';
         });
         annual.getRow(outputRow).height = 42; outputRow++;
       });
