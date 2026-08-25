@@ -58,6 +58,7 @@ model User {
   lastName       String
   email          String    @unique
   phone          String?   @unique
+  position       String?
   password       String
   role           Role
   departmentId   String?

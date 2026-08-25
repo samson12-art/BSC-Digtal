@@ -6,6 +6,15 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { createAuditLog } = require('../utils/helpers');
 const { validate } = require('../middleware/validate');
 
+router.get('/public', async (req, res) => {
+  try {
+    const departments = await prisma.department.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } });
+    res.json(departments);
+  } catch (error) {
+    res.status(500).json({ error: 'Unable to load departments' });
+  }
+});
+
 router.get('/', authenticate, async (req, res) => {
   try {
     const departments = await prisma.department.findMany({

@@ -134,16 +134,27 @@ router.post('/register', [
   body('lastName').trim().isLength({ min: 1, max: 80 }).withMessage('Last name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  body('phone').notEmpty().withMessage('Phone number is required'),
+  body('departmentId').isUUID().withMessage('Department is required'),
+  body('position').trim().isLength({ min: 2, max: 100 }).withMessage('Position is required'),
   validate
 ], async (req, res) => {
   try {
+    const { firstName, lastName, password, departmentId, position } = req.body;
     const email = req.body.email.toLowerCase();
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) return res.status(409).json({ error: 'An account already exists for this email. Please sign in.' });
+    const phone = normalizePhone(req.body.phone);
+    if (!phone) return res.status(400).json({ error: 'Enter a valid Ethiopian phone number, e.g. 0912345678.' });
+    const [phoneTaken, department] = await Promise.all([
+      prisma.user.findUnique({ where: { phone } }),
+      prisma.department.findUnique({ where: { id: departmentId }, select: { id: true } })
+    ]);
+    if (phoneTaken) return res.status(409).json({ error: 'This phone number is already linked to another account.' });
+    if (!department) return res.status(400).json({ error: 'Selected department does not exist.' });
     const user = await prisma.user.create({ data: {
-      firstName: req.body.firstName.trim(), lastName: req.body.lastName.trim(), email,
-      password: await bcrypt.hash(req.body.password, 12), role: 'EMPLOYEE',
-      emailVerifiedAt: new Date(), isApproved: false
+      firstName: firstName.trim(), lastName: lastName.trim(), email, phone, position: position.trim(), departmentId,
+      password: await bcrypt.hash(password, 12), role: 'EMPLOYEE', emailVerifiedAt: new Date(), isApproved: false
     } });
     await createAuditLog(user.id, `${user.firstName} ${user.lastName}`, 'REGISTER', 'User', user.id, { method: 'password' }, req.ip);
     res.status(201).json({ message: 'Account created. It is awaiting administrator approval.' });
