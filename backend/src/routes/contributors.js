@@ -107,7 +107,7 @@ router.post('/:id/review', authenticate, [
   try {
     const contributor = await prisma.planContributor.findUnique({ where: { id: req.params.id }, include: { plan: true, user: true } });
     if (!contributor) return res.status(404).json({ error: 'Contributor not found' });
-    const isReviewer = contributor.plan.ownerId === req.user.id || contributor.user.managerId === req.user.id || ['CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER'].includes(req.user.role);
+    const isReviewer = contributor.plan.ownerId === req.user.id || contributor.user.managerId === req.user.id || ['CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER'].includes(req.user.role);
     if (!isReviewer) return res.status(403).json({ error: 'Only the objective owner or supervisor can review this contribution' });
     if (contributor.reviewStatus !== 'SUBMITTED') return res.status(400).json({ error: 'Only submitted contributions can be reviewed' });
     const factor = req.body.adjustmentFactor === undefined ? 1 : Number(req.body.adjustmentFactor);

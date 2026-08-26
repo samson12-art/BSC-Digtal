@@ -153,6 +153,42 @@ async function main() {
     }
   }
 
+  const extraPlanTitle = 'Improve Underwriting Accuracy - Aisha';
+  const existingExtraPlan = await prisma.bSCPlan.findFirst({
+    where: { title: extraPlanTitle, ownerId: employees[0].id }
+  });
+
+  if (!existingExtraPlan) {
+    const extraPlan = await prisma.bSCPlan.create({
+      data: {
+        title: extraPlanTitle,
+        description: 'Improve underwriting accuracy by reducing misclassification errors through advanced risk assessment tools and continuous training for the underwriting team.',
+        perspective: 'INTERNAL_BUSINESS_PROCESS',
+        strategicObjective: 'Reduce underwriting misclassification errors by 30% within the fiscal year',
+        kpiName: 'Underwriting Accuracy Rate',
+        kpiFormula: '(Correctly Classified Policies / Total Policies Underwritten) * 100',
+        measurementUnit: '%',
+        baseline: 78,
+        target: 95,
+        actualResult: 82,
+        weight: 18,
+        objectiveNumber: '3.2.1',
+        strategicTheme: 'Operational Excellence',
+        monthlyTargets: { July: 80, August: 82, September: 84, October: 86, November: 88, December: 90, January: 91, February: 92, March: 93, April: 94, May: 94.5, June: 95 },
+        planYear: 2025,
+        strategicInitiative: 'Implement automated risk scoring engine, conduct quarterly underwriting calibration workshops, and establish peer review protocols for high-value policies',
+        budget: 4500000,
+        startDate: new Date('2025-07-01'),
+        endDate: new Date('2026-06-30'),
+        status: 'DRAFT',
+        ownerId: employees[0].id,
+        departmentId: employees[0].departmentId,
+        versions: { create: { version: 1, data: { title: extraPlanTitle } } }
+      }
+    });
+    createdPlans.push(extraPlan);
+  }
+
   console.log(`Created ${departments.length} departments`);
   console.log(`Created 1 Board Member, 1 CEO`);
   console.log(`Created ${execManagers.length} Executive Managers`);

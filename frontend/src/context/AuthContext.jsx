@@ -51,8 +51,8 @@ export function AuthProvider({ children }) {
   };
 
   const isRole = (...roles) => user && roles.includes(user.role);
-  const canApprove = () => user && ['DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO', 'BOARD_MEMBER'].includes(user.role);
-  const isManager = () => user && ['DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'].includes(user.role);
+  const canApprove = () => user && ['DIVISION_MANAGER', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO', 'BOARD_MEMBER'].includes(user.role);
+  const isManager = () => user && ['DIVISION_MANAGER', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'].includes(user.role);
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, completeOAuthLogin, logout, refreshUser, isRole, canApprove, isManager }}>

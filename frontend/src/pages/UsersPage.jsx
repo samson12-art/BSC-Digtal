@@ -3,7 +3,7 @@ import api from '../lib/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
 import { roleColors, roles } from '../lib/utils';
-import { Plus, Edit, Search, Check, X } from 'lucide-react';
+import { Plus, Edit, Search, Check, X, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
@@ -53,19 +53,27 @@ export default function UsersPage() {
   const allowedRoles = currentUser?.role === 'CEO'
     ? roles
     : currentUser?.role === 'EXECUTIVE_MANAGER'
-      ? roles.filter(role => ['DEPARTMENT_MANAGER', 'EMPLOYEE'].includes(role.value))
-      : roles.filter(role => role.value === 'EMPLOYEE');
-  const canManageUsers = ['CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER'].includes(currentUser?.role);
+      ? roles.filter(role => ['DEPARTMENT_MANAGER', 'DIVISION_MANAGER', 'EMPLOYEE'].includes(role.value))
+      : currentUser?.role === 'DEPARTMENT_MANAGER' ? roles.filter(role => ['DIVISION_MANAGER', 'EMPLOYEE'].includes(role.value)) : roles.filter(role => role.value === 'EMPLOYEE');
+  const canManageUsers = ['CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER'].includes(currentUser?.role);
   const availableDepartments = currentUser?.role === 'CEO'
     ? departments
     : departments.filter(department => department.id === currentUser?.departmentId);
   const canEditUser = (target) => currentUser?.role === 'CEO'
     || (currentUser?.role === 'EXECUTIVE_MANAGER'
-      && ['DEPARTMENT_MANAGER', 'EMPLOYEE'].includes(target.role)
+      && ['DEPARTMENT_MANAGER', 'DIVISION_MANAGER', 'EMPLOYEE'].includes(target.role)
       && target.departmentId === currentUser.departmentId)
     || (currentUser?.role === 'DEPARTMENT_MANAGER'
+      && ['DIVISION_MANAGER', 'EMPLOYEE'].includes(target.role)
+      && target.departmentId === currentUser.departmentId)
+    || (currentUser?.role === 'DIVISION_MANAGER'
       && target.role === 'EMPLOYEE'
       && target.departmentId === currentUser.departmentId);
+  const removeUser = async (target) => {
+    if (!window.confirm(`Remove ${target.firstName} ${target.lastName}? Their account will be deactivated and can be restored later.`)) return;
+    try { await api.delete(`/users/${target.id}`); toast.success('User removed and deactivated'); fetchData(); }
+    catch (err) { toast.error(err.response?.data?.error || 'Could not remove user'); }
+  };
   const updateApproval = async (target, approved) => {
     const action = approved ? 'approve' : 'reject';
     if (!approved && !window.confirm(`Reject ${target.firstName} ${target.lastName}? Their account will be deactivated.`)) return;
@@ -100,7 +108,7 @@ export default function UsersPage() {
                   <td className="table-cell text-sm">{u.department?.name || '-'}</td>
                   <td className="table-cell text-sm">{u.manager ? `${u.manager.firstName} ${u.manager.lastName}` : '-'}</td>
                   <td className="table-cell"><span className={`badge ${!u.isActive ? 'bg-red-100 text-red-800' : u.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{!u.isActive ? 'Inactive' : u.isApproved ? 'Approved' : 'Pending approval'}</span></td>
-                  <td className="table-cell"><div className="flex items-center gap-1">{canEditUser(u) && u.isActive && !u.isApproved && <><button onClick={() => updateApproval(u, true)} title="Approve employee" className="p-1.5 text-green-700 hover:bg-green-50 rounded-lg"><Check size={16} /></button><button onClick={() => updateApproval(u, false)} title="Reject employee" className="p-1.5 text-red-700 hover:bg-red-50 rounded-lg"><X size={16} /></button></>}{canEditUser(u) && <button onClick={() => openEdit(u)} title="View or edit employee" className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit size={16} className="text-gray-600" /></button>}</div></td>
+                  <td className="table-cell"><div className="flex items-center gap-1">{canEditUser(u) && u.isActive && !u.isApproved && <><button onClick={() => updateApproval(u, true)} title="Approve employee" className="p-1.5 text-green-700 hover:bg-green-50 rounded-lg"><Check size={16} /></button><button onClick={() => updateApproval(u, false)} title="Reject employee" className="p-1.5 text-red-700 hover:bg-red-50 rounded-lg"><X size={16} /></button></>}{canEditUser(u) && <button onClick={() => openEdit(u)} title="View or edit employee" className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit size={16} className="text-gray-600" /></button>}{canEditUser(u) && u.isActive && <button onClick={() => removeUser(u)} title="Remove user" className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>}</div></td>
                 </tr>
               ))}
             </tbody>

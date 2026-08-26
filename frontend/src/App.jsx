@@ -28,7 +28,7 @@ function ProtectedRoute({ children, roles }) {
 function DashboardRouter() {
   const { user } = useAuth();
   if (user.role === 'BOARD_MEMBER' || user.role === 'CEO' || user.role === 'EXECUTIVE_MANAGER') return <ExecutiveDashboard />;
-  if (user.role === 'DEPARTMENT_MANAGER') return <ManagerDashboard />;
+  if (user.role === 'DEPARTMENT_MANAGER' || user.role === 'DIVISION_MANAGER') return <ManagerDashboard />;
   return <EmployeeDashboard />;
 }
 
@@ -39,12 +39,12 @@ export default function App() {
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<DashboardRouter />} />
         <Route path="plans" element={<PlansList />} />
-        <Route path="plans/new" element={<ProtectedRoute roles={['EMPLOYEE', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO', 'BOARD_MEMBER']}><PlanCreate /></ProtectedRoute>} />
+        <Route path="plans/new" element={<ProtectedRoute roles={['EMPLOYEE', 'DIVISION_MANAGER', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO', 'BOARD_MEMBER']}><PlanCreate /></ProtectedRoute>} />
         <Route path="plans/:id" element={<PlanDetail />} />
         <Route path="plans/:id/edit" element={<PlanEdit />} />
-        <Route path="reviews" element={<ProtectedRoute roles={['DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO', 'BOARD_MEMBER']}><PendingReviews /></ProtectedRoute>} />
+        <Route path="reviews" element={<ProtectedRoute roles={['DIVISION_MANAGER', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO', 'BOARD_MEMBER']}><PendingReviews /></ProtectedRoute>} />
         <Route path="reports" element={<ReportsPage />} />
-        <Route path="users" element={<ProtectedRoute roles={['CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'BOARD_MEMBER']}><UsersPage /></ProtectedRoute>} />
+        <Route path="users" element={<ProtectedRoute roles={['CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER', 'BOARD_MEMBER']}><UsersPage /></ProtectedRoute>} />
         <Route path="departments" element={<ProtectedRoute roles={['CEO', 'EXECUTIVE_MANAGER', 'BOARD_MEMBER']}><DepartmentsPage /></ProtectedRoute>} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="audit" element={<ProtectedRoute roles={['CEO', 'EXECUTIVE_MANAGER', 'BOARD_MEMBER']}><AuditTrailPage /></ProtectedRoute>} />

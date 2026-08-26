@@ -69,7 +69,7 @@ router.get('/employee', authenticate, async (req, res) => {
   }
 });
 
-router.get('/manager', authenticate, authorize('DEPARTMENT_MANAGER'), async (req, res) => {
+router.get('/manager', authenticate, authorize('DEPARTMENT_MANAGER', 'DIVISION_MANAGER'), async (req, res) => {
   try {
     const teamPlans = await prisma.bSCPlan.findMany({
       where: {

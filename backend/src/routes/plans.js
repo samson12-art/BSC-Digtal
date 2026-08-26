@@ -37,7 +37,7 @@ router.get('/', authenticate, async (req, res) => {
     
     if (req.user.role === 'EMPLOYEE') {
       where.ownerId = req.user.id;
-    } else if (req.user.role === 'DEPARTMENT_MANAGER') {
+    } else if (['DEPARTMENT_MANAGER', 'DIVISION_MANAGER'].includes(req.user.role)) {
       where.OR = [
         { ownerId: req.user.id },
         { departmentId: req.user.departmentId }
@@ -216,10 +216,10 @@ router.post('/:id/comments', authenticate, [
   }
 });
 
-router.get('/pending-reviews/all', authenticate, authorize('DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'), async (req, res) => {
+router.get('/pending-reviews/all', authenticate, authorize('DIVISION_MANAGER', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'), async (req, res) => {
   try {
     let where = { status: 'SUBMITTED' };
-    if (req.user.role === 'DEPARTMENT_MANAGER') {
+    if (['DEPARTMENT_MANAGER', 'DIVISION_MANAGER'].includes(req.user.role)) {
       where.OR = [
         { departmentId: req.user.departmentId, status: 'SUBMITTED' },
         { departmentId: req.user.departmentId, status: 'UNDER_REVIEW' }

@@ -13,9 +13,10 @@ const crypto = require('crypto');
 const createVerificationToken = () => crypto.randomBytes(32).toString('hex');
 const hashVerificationToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 const managedRoles = {
-  CEO: new Set(['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE']),
-  EXECUTIVE_MANAGER: new Set(['DEPARTMENT_MANAGER', 'EMPLOYEE']),
-  DEPARTMENT_MANAGER: new Set(['EMPLOYEE'])
+  CEO: new Set(['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER', 'EMPLOYEE']),
+  EXECUTIVE_MANAGER: new Set(['DEPARTMENT_MANAGER', 'DIVISION_MANAGER', 'EMPLOYEE']),
+  DEPARTMENT_MANAGER: new Set(['DIVISION_MANAGER', 'EMPLOYEE']),
+  DIVISION_MANAGER: new Set(['EMPLOYEE'])
 };
 
 function canManageUser(actor, role, departmentId) {
@@ -32,11 +33,11 @@ async function validateManagerScope(actor, managerId, departmentId) {
   return null;
 }
 
-router.get('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'BOARD_MEMBER'), async (req, res) => {
+router.get('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER', 'BOARD_MEMBER'), async (req, res) => {
   try {
     const { departmentId, role, search } = req.query;
     const where = {};
-    if (req.user.role === 'EXECUTIVE_MANAGER' || req.user.role === 'DEPARTMENT_MANAGER') {
+    if (['EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER'].includes(req.user.role)) {
       where.departmentId = req.user.departmentId || '__no_department_assigned__';
     } else if (departmentId) where.departmentId = departmentId;
     if (role) where.role = role;
@@ -68,7 +69,7 @@ router.get('/hierarchy', authenticate, async (req, res) => {
       orderBy: [{ role: 'asc' }, { lastName: 'asc' }]
     });
     const hierarchy = {};
-    const roleOrder = ['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE'];
+    const roleOrder = ['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER', 'EMPLOYEE'];
     roleOrder.forEach(role => { hierarchy[role] = users.filter(u => u.role === role).map(({ password, ...rest }) => rest); });
     res.json(hierarchy);
   } catch (error) {
@@ -76,11 +77,11 @@ router.get('/hierarchy', authenticate, async (req, res) => {
   }
 });
 
-router.post('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER'), [
+router.post('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER'), [
   body('firstName').trim().notEmpty().withMessage('First name is required'),
   body('lastName').trim().notEmpty().withMessage('Last name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
-  body('role').isIn(['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE']).withMessage('Valid role is required'),
+  body('role').isIn(['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER', 'EMPLOYEE']).withMessage('Valid role is required'),
   validate
 ], async (req, res) => {
   try {
@@ -135,11 +136,11 @@ router.post('/', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT
   }
 });
 
-router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER'), [
+router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER'), [
   body('firstName').optional().trim().notEmpty(),
   body('lastName').optional().trim().notEmpty(),
   body('email').optional().isEmail().withMessage('Valid email is required'),
-  body('role').optional().isIn(['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE']),
+  body('role').optional().isIn(['BOARD_MEMBER', 'CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER', 'EMPLOYEE']),
   validate
 ], async (req, res) => {
   try {
@@ -196,7 +197,22 @@ router.put('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTME
   }
 });
 
-router.get('/my-team', authenticate, authorize('DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'), async (req, res) => {
+// User removal is a reversible deactivation, preserving audit and performance records.
+router.delete('/:id', authenticate, authorize('CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER'), async (req, res) => {
+  try {
+    const existing = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'User not found' });
+    if (existing.id === req.user.id) return res.status(400).json({ error: 'You cannot remove your own account' });
+    if (!canManageUser(req.user, existing.role, existing.departmentId)) return res.status(403).json({ error: 'You can only remove permitted users in your assigned department.' });
+    await prisma.user.update({ where: { id: existing.id }, data: { isActive: false, isApproved: false } });
+    await createAuditLog(req.user.id, `${req.user.firstName} ${req.user.lastName}`, 'REMOVE_USER', 'User', existing.id, { email: existing.email, role: existing.role });
+    res.json({ message: 'User removed and deactivated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/my-team', authenticate, authorize('DIVISION_MANAGER', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'), async (req, res) => {
   try {
     const team = await prisma.user.findMany({
       where: { managerId: req.user.id, isActive: true },

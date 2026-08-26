@@ -6,7 +6,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { createAuditLog, createNotification } = require('../utils/helpers');
 const { validate } = require('../middleware/validate');
 
-router.post('/:planId/approve', authenticate, authorize('DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO', 'BOARD_MEMBER'), async (req, res) => {
+router.post('/:planId/approve', authenticate, authorize('DIVISION_MANAGER', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO', 'BOARD_MEMBER'), async (req, res) => {
   try {
     const { comments } = req.body;
     const plan = await prisma.bSCPlan.findUnique({ where: { id: req.params.planId }, include: { owner: true, department: true } });
@@ -36,7 +36,7 @@ router.post('/:planId/approve', authenticate, authorize('DEPARTMENT_MANAGER', 'E
   }
 });
 
-router.post('/:planId/reject', authenticate, authorize('DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO', 'BOARD_MEMBER'), [
+router.post('/:planId/reject', authenticate, authorize('DIVISION_MANAGER', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO', 'BOARD_MEMBER'), [
   body('comments').trim().notEmpty().withMessage('Rejection reason is required').isLength({ min: 10, max: 2000 }),
   validate
 ], async (req, res) => {
@@ -62,7 +62,7 @@ router.post('/:planId/reject', authenticate, authorize('DEPARTMENT_MANAGER', 'EX
   }
 });
 
-router.post('/:planId/return', authenticate, authorize('DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'), [
+router.post('/:planId/return', authenticate, authorize('DIVISION_MANAGER', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'), [
   body('comments').trim().notEmpty().withMessage('Revision comments are required').isLength({ min: 10, max: 2000 }),
   validate
 ], async (req, res) => {
@@ -100,15 +100,16 @@ router.post('/:planId/submit', authenticate, async (req, res) => {
     const updatedPlan = await prisma.bSCPlan.update({ where: { id: plan.id }, data: { status: 'SUBMITTED' } });
 
     const reviewerRoleMap = {
-      'EMPLOYEE': 'DEPARTMENT_MANAGER',
+      'EMPLOYEE': 'DIVISION_MANAGER',
+      'DIVISION_MANAGER': 'DEPARTMENT_MANAGER',
       'DEPARTMENT_MANAGER': 'EXECUTIVE_MANAGER', 'EXECUTIVE_MANAGER': 'CEO'
     };
     const reviewerRole = reviewerRoleMap[req.user.role];
     if (reviewerRole) {
       const reviewers = await prisma.user.findMany({ where: { role: reviewerRole, isActive: true } });
       for (const reviewer of reviewers) {
-        const shouldNotify = reviewerRole === 'DEPARTMENT_MANAGER' && reviewer.departmentId === req.user.departmentId ||
-          reviewerRole !== 'DEPARTMENT_MANAGER';
+        const shouldNotify = ['DIVISION_MANAGER', 'DEPARTMENT_MANAGER'].includes(reviewerRole) && reviewer.departmentId === req.user.departmentId ||
+          !['DIVISION_MANAGER', 'DEPARTMENT_MANAGER'].includes(reviewerRole);
         if (shouldNotify || reviewers.length <= 3) {
           await createNotification(reviewer.id, 'Plan Pending Review', `${req.user.firstName} ${req.user.lastName} submitted "${plan.title}" for your review`, 'REVIEW_REQUIRED', `/reviews`);
         }
