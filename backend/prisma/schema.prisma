@@ -201,7 +201,25 @@ model PlanContributor {
   user             User     @relation(fields: [userId], references: [id])
   contributionPct  Float    @default(0)
   role             String?
+  /// The contributor's own measurable KPI. It is deliberately separate from
+  /// the shared plan target so a team result cannot hide individual effort.
+  individualTarget Float?
+  individualActual Float?
+  qualityScore     Float?
+  timelinessScore  Float?
+  collaborationScore Float?
+  dependencyDelayPct Float @default(0)
+  dependencyReason String?
+  adjustmentFactor Float @default(1)
+  adjustmentReason String?
+  evidence         Json?
+  reviewStatus     String @default("NOT_SUBMITTED")
+  reviewerId       String?
+  reviewerComments String?
+  reviewedAt       DateTime?
+  submittedAt      DateTime?
   createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@unique([planId, userId])
 }

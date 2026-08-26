@@ -31,6 +31,8 @@ export default function PlanDetail() {
   const [searching, setSearching] = useState(false);
   const [contribPct, setContribPct] = useState(25);
   const [contribRole, setContribRole] = useState('CONTRIBUTOR');
+  const [performanceContributor, setPerformanceContributor] = useState(null);
+  const [performance, setPerformance] = useState({ individualTarget: '', individualActual: '', qualityScore: '', timelinessScore: '', collaborationScore: '', dependencyDelayPct: 0, dependencyReason: '', evidence: '' });
 
   useEffect(() => { fetchPlan(); }, [id]);
 
@@ -123,6 +125,21 @@ export default function PlanDetail() {
       toast.success('Contributor removed');
       fetchPlan();
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to remove contributor'); }
+  };
+
+  const openPerformance = (c) => {
+    setPerformanceContributor(c);
+    setPerformance({ individualTarget: c.individualTarget ?? '', individualActual: c.individualActual ?? '', qualityScore: c.qualityScore ?? '', timelinessScore: c.timelinessScore ?? '', collaborationScore: c.collaborationScore ?? '', dependencyDelayPct: c.dependencyDelayPct ?? 0, dependencyReason: c.dependencyReason || '', evidence: (c.evidence || []).map(e => `${e.type || 'Evidence'}: ${e.reference || ''}`).join('\n') });
+  };
+  const submitPerformance = async () => {
+    const evidence = performance.evidence.split('\n').map(line => line.trim()).filter(Boolean).map(line => { const [type, ...reference] = line.split(':'); return { type: type.trim() || 'Evidence', reference: reference.join(':').trim() || line }; });
+    if (!evidence.length) return toast.error('Add at least one evidence item');
+    setSubmitting(true);
+    try {
+      await api.post(`/contributors/${performanceContributor.id}/performance`, { ...performance, individualTarget: performance.individualTarget === '' ? null : Number(performance.individualTarget), individualActual: performance.individualActual === '' ? null : Number(performance.individualActual), qualityScore: Number(performance.qualityScore), timelinessScore: Number(performance.timelinessScore), collaborationScore: Number(performance.collaborationScore), dependencyDelayPct: Number(performance.dependencyDelayPct || 0), evidence });
+      toast.success('Result submitted for supervisor validation'); setPerformanceContributor(null); fetchPlan();
+    } catch (err) { toast.error(err.response?.data?.error || 'Could not submit result'); }
+    finally { setSubmitting(false); }
   };
 
   if (loading) return <LoadingSpinner className="h-96" size="lg" />;
@@ -287,6 +304,7 @@ export default function PlanDetail() {
                     {isOwner && (
                       <button onClick={() => handleRemoveContributor(c.id)} className="text-gray-400 hover:text-red-500 flex-shrink-0"><Trash2 size={14} /></button>
                     )}
+                    {c.userId === user?.id && <button onClick={() => openPerformance(c)} className="text-xs text-[#136f63] hover:underline flex-shrink-0">Submit</button>}
                   </div>
                 ))}
                 <div className="pt-2 border-t border-gray-100 text-xs text-gray-500">
@@ -304,6 +322,16 @@ export default function PlanDetail() {
         <p className="text-sm text-gray-600 mb-4">Are you sure you want to approve this plan?</p>
         <textarea value={actionComment} onChange={e => setActionComment(e.target.value)} className="input-field mb-4" rows={3} placeholder="Optional approval comments..." />
         <div className="flex justify-end gap-3"><button onClick={() => setShowApproveModal(false)} className="btn-secondary">Cancel</button><button onClick={handleApprove} disabled={submitting} className="btn-success">{submitting ? 'Approving...' : 'Approve'}</button></div>
+      </Modal>
+
+      <Modal isOpen={!!performanceContributor} onClose={() => setPerformanceContributor(null)} title="Submit Individual Contribution">
+        <p className="text-sm text-gray-600 mb-4">Record your verified KPI result. A supervisor will validate evidence, quality, timeliness, and any external dependency adjustment.</p>
+        <div className="grid grid-cols-2 gap-3">
+          {[['individualTarget', 'My KPI target'], ['individualActual', 'My actual result'], ['qualityScore', 'Quality (0–150)'], ['timelinessScore', 'Timeliness (0–150)'], ['collaborationScore', 'Collaboration (0–150)'], ['dependencyDelayPct', 'External delay %']].map(([field, label]) => <div key={field}><label className="block text-xs font-medium text-gray-700 mb-1">{label}</label><input type="number" min="0" value={performance[field]} onChange={e => setPerformance({ ...performance, [field]: e.target.value })} className="input-field" /></div>)}
+        </div>
+        <label className="block text-xs font-medium text-gray-700 mt-3 mb-1">External dependency reason</label><textarea value={performance.dependencyReason} onChange={e => setPerformance({ ...performance, dependencyReason: e.target.value })} className="input-field" rows={2} />
+        <label className="block text-xs font-medium text-gray-700 mt-3 mb-1">Evidence (one item per line)</label><textarea value={performance.evidence} onChange={e => setPerformance({ ...performance, evidence: e.target.value })} className="input-field" rows={3} placeholder="CRM report: CR-2026-004&#10;Approved document: monthly-report.pdf" />
+        <div className="flex justify-end gap-3 mt-4"><button onClick={() => setPerformanceContributor(null)} className="btn-secondary">Cancel</button><button onClick={submitPerformance} disabled={submitting} className="btn-primary">{submitting ? 'Submitting...' : 'Submit for validation'}</button></div>
       </Modal>
 
       <Modal isOpen={showRejectModal} onClose={() => setShowRejectModal(false)} title="Reject Plan">

@@ -6,6 +6,19 @@ const { authenticate } = require('../middleware/auth');
 const { createAuditLog, createNotification } = require('../utils/helpers');
 const { validate } = require('../middleware/validate');
 
+const scoreOrZero = value => Math.max(0, Math.min(150, Number(value) || 0));
+const contributionScore = (contributor, plan) => {
+  const result = contributor.individualTarget > 0
+    ? scoreOrZero((contributor.individualActual / contributor.individualTarget) * 100)
+    : scoreOrZero((plan.actualResult / plan.target) * 100);
+  const quality = scoreOrZero(contributor.qualityScore);
+  const timeliness = scoreOrZero(contributor.timelinessScore);
+  const collaboration = scoreOrZero(contributor.collaborationScore);
+  const shared = scoreOrZero((plan.actualResult / plan.target) * 100) * (contributor.contributionPct / 100);
+  const baseScore = (result * .40) + (quality * .20) + (timeliness * .15) + (shared * .15) + (collaboration * .10);
+  return { result, quality, timeliness, collaboration, shared: Math.round(shared * 10) / 10, baseScore: Math.round(baseScore * 10) / 10, finalScore: Math.round(baseScore * (contributor.adjustmentFactor || 1) * 10) / 10 };
+};
+
 router.get('/my-contributions', authenticate, async (req, res) => {
   try {
     const contributions = await prisma.planContributor.findMany({
@@ -29,7 +42,8 @@ router.get('/my-contributions', authenticate, async (req, res) => {
         ...c.plan,
         achievementPercentage: c.plan.target > 0 ? Math.min(Math.round((c.plan.actualResult / c.plan.target) * 100), 150) : 0,
         weightedAchievement: c.plan.target > 0 ? Math.min(Math.round((c.plan.actualResult / c.plan.target) * 100), 150) * (c.contributionPct / 100) : 0
-      }
+      },
+      score: contributionScore(c, c.plan)
     }));
 
     const totalWeightedAchievement = enriched.reduce((sum, c) => sum + c.plan.weightedAchievement, 0);
@@ -47,6 +61,62 @@ router.get('/my-contributions', authenticate, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Contributors submit verified, individual results. Evidence is stored as a
+// small structured list (for example CRM report number, document URL, note).
+router.post('/:id/performance', authenticate, [
+  body('individualTarget').optional({ nullable: true }).isFloat({ min: 0 }),
+  body('individualActual').optional({ nullable: true }).isFloat({ min: 0 }),
+  body('qualityScore').isFloat({ min: 0, max: 150 }),
+  body('timelinessScore').isFloat({ min: 0, max: 150 }),
+  body('collaborationScore').isFloat({ min: 0, max: 150 }),
+  body('dependencyDelayPct').optional().isFloat({ min: 0, max: 100 }),
+  body('dependencyReason').optional().trim().isLength({ max: 1000 }),
+  body('evidence').isArray({ min: 1, max: 20 }).withMessage('At least one evidence item is required'),
+  body('evidence.*.type').optional().trim().isLength({ max: 100 }),
+  body('evidence.*.reference').optional().trim().isLength({ max: 1000 }),
+  validate
+], async (req, res) => {
+  try {
+    const contributor = await prisma.planContributor.findUnique({ where: { id: req.params.id }, include: { plan: true } });
+    if (!contributor) return res.status(404).json({ error: 'Contributor not found' });
+    if (contributor.userId !== req.user.id) return res.status(403).json({ error: 'Only the assigned contributor can submit this result' });
+    const data = {
+      individualTarget: req.body.individualTarget === null || req.body.individualTarget === undefined ? null : Number(req.body.individualTarget),
+      individualActual: req.body.individualActual === null || req.body.individualActual === undefined ? null : Number(req.body.individualActual),
+      qualityScore: Number(req.body.qualityScore), timelinessScore: Number(req.body.timelinessScore), collaborationScore: Number(req.body.collaborationScore),
+      dependencyDelayPct: Number(req.body.dependencyDelayPct || 0), dependencyReason: req.body.dependencyReason || null,
+      evidence: req.body.evidence, reviewStatus: 'SUBMITTED', submittedAt: new Date(), reviewerId: null, reviewerComments: null, reviewedAt: null,
+      adjustmentFactor: 1, adjustmentReason: null
+    };
+    const updated = await prisma.planContributor.update({ where: { id: contributor.id }, data, include: { plan: true, user: { select: { firstName: true, lastName: true } } } });
+    await createNotification(contributor.plan.ownerId, 'Contribution awaiting review', `${req.user.firstName} ${req.user.lastName} submitted a contribution result for "${contributor.plan.title}".`, 'COMMENT', `/plans/${contributor.planId}`);
+    await createAuditLog(req.user.id, `${req.user.firstName} ${req.user.lastName}`, 'SUBMIT_CONTRIBUTION_RESULT', 'PlanContributor', contributor.id, { planId: contributor.planId });
+    res.json({ ...updated, score: contributionScore(updated, updated.plan) });
+  } catch (error) { res.status(500).json({ error: 'Internal server error' }); }
+});
+
+router.post('/:id/review', authenticate, [
+  body('action').isIn(['APPROVE', 'RETURN']).withMessage('Action must be APPROVE or RETURN'),
+  body('comments').optional().trim().isLength({ max: 2000 }),
+  body('adjustmentFactor').optional().isFloat({ min: 0.5, max: 1.5 }),
+  body('adjustmentReason').optional().trim().isLength({ max: 1000 }),
+  validate
+], async (req, res) => {
+  try {
+    const contributor = await prisma.planContributor.findUnique({ where: { id: req.params.id }, include: { plan: true, user: true } });
+    if (!contributor) return res.status(404).json({ error: 'Contributor not found' });
+    const isReviewer = contributor.plan.ownerId === req.user.id || contributor.user.managerId === req.user.id || ['CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER'].includes(req.user.role);
+    if (!isReviewer) return res.status(403).json({ error: 'Only the objective owner or supervisor can review this contribution' });
+    if (contributor.reviewStatus !== 'SUBMITTED') return res.status(400).json({ error: 'Only submitted contributions can be reviewed' });
+    const factor = req.body.adjustmentFactor === undefined ? 1 : Number(req.body.adjustmentFactor);
+    if (factor !== 1 && !req.body.adjustmentReason) return res.status(400).json({ error: 'An adjustment reason is required when changing the score' });
+    const updated = await prisma.planContributor.update({ where: { id: contributor.id }, data: { reviewStatus: req.body.action === 'APPROVE' ? 'APPROVED' : 'RETURNED', reviewerId: req.user.id, reviewerComments: req.body.comments || null, reviewedAt: new Date(), adjustmentFactor: factor, adjustmentReason: req.body.adjustmentReason || null }, include: { plan: true, user: { select: { firstName: true, lastName: true } } } });
+    await createNotification(contributor.userId, `Contribution ${req.body.action === 'APPROVE' ? 'approved' : 'returned'}`, `Your result for "${contributor.plan.title}" was ${req.body.action === 'APPROVE' ? 'approved' : 'returned for correction'}.`, 'COMMENT', `/plans/${contributor.planId}`);
+    await createAuditLog(req.user.id, `${req.user.firstName} ${req.user.lastName}`, 'REVIEW_CONTRIBUTION_RESULT', 'PlanContributor', contributor.id, { action: req.body.action, adjustmentFactor: factor });
+    res.json({ ...updated, score: contributionScore(updated, updated.plan) });
+  } catch (error) { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 router.get('/plan/:planId', authenticate, async (req, res) => {
