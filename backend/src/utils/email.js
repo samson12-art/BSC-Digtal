@@ -127,4 +127,12 @@ async function sendVerificationEmail(userEmail, firstName, token) {
   return sendEmail(userEmail, subject, html, text);
 }
 
-module.exports = { sendEmail, sendNotificationEmail, sendVerificationEmail, getTransporter };
+async function sendPasswordResetEmail(userEmail, firstName, token) {
+  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?resetToken=${encodeURIComponent(token)}`;
+  const subject = 'BSC System: Reset your password';
+  const text = `Hello ${firstName},\n\nUse this link to reset your BSC System password:\n${resetUrl}\n\nThis link expires in 30 minutes. If you did not request a reset, you can safely ignore this email.`;
+  const html = `<p>Hello ${firstName},</p><p>Use the link below to reset your BSC System password.</p><p><a href="${resetUrl}">Reset password</a></p><p>This link expires in 30 minutes. If you did not request it, you can safely ignore this email.</p>`;
+  return sendEmail(userEmail, subject, html, text);
+}
+
+module.exports = { sendEmail, sendNotificationEmail, sendVerificationEmail, sendPasswordResetEmail, getTransporter };

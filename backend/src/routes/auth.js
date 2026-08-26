@@ -8,7 +8,7 @@ const prisma = require('../utils/prisma');
 const { authenticate } = require('../middleware/auth');
 const { createAuditLog, createNotification } = require('../utils/helpers');
 const { validate } = require('../middleware/validate');
-const { sendVerificationEmail } = require('../utils/email');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/email');
 const { normalizePhone, sendPhoneVerification, verifyPhoneCode } = require('../utils/sms');
 
 const verificationToken = () => crypto.randomBytes(32).toString('hex');
@@ -213,6 +213,51 @@ router.post('/resend-verification', [body('email').isEmail().withMessage('Valid 
     res.json({ message: 'If an unverified account exists, a verification email has been sent.' });
   } catch (error) {
     res.status(500).json({ error: 'Unable to send verification email' });
+  }
+});
+
+// Always return the same response so an attacker cannot use this endpoint to
+// discover which email addresses have accounts.
+router.post('/forgot-password', [body('email').isEmail().withMessage('Valid email is required'), validate], async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { email: req.body.email.toLowerCase() } });
+    if (user && user.isActive) {
+      const token = verificationToken();
+      await prisma.user.update({ where: { id: user.id }, data: {
+        passwordResetToken: hashToken(token),
+        passwordResetExpiresAt: new Date(Date.now() + 30 * 60 * 1000)
+      } });
+      await sendPasswordResetEmail(user.email, user.firstName, token);
+      await createAuditLog(user.id, `${user.firstName} ${user.lastName}`, 'REQUEST_PASSWORD_RESET', 'User', user.id, null, req.ip);
+    }
+    res.json({ message: 'If an active account exists for this email, a password-reset link has been sent.' });
+  } catch (error) {
+    console.error('Password reset request error:', error);
+    res.status(500).json({ error: 'Unable to process password reset request' });
+  }
+});
+
+router.post('/reset-password', [
+  body('token').isString().notEmpty().withMessage('Reset token is required'),
+  body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  validate
+], async (req, res) => {
+  try {
+    const user = await prisma.user.findFirst({ where: {
+      passwordResetToken: hashToken(req.body.token),
+      passwordResetExpiresAt: { gt: new Date() }
+    } });
+    if (!user) return res.status(400).json({ error: 'This password-reset link is invalid or has expired.' });
+    await prisma.user.update({ where: { id: user.id }, data: {
+      password: await bcrypt.hash(req.body.newPassword, 12),
+      passwordResetToken: null,
+      passwordResetExpiresAt: null
+    } });
+    await createAuditLog(user.id, `${user.firstName} ${user.lastName}`, 'RESET_PASSWORD', 'User', user.id, null, req.ip);
+    res.json({ message: 'Password reset successfully. You can now sign in.' });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ error: 'Unable to reset password' });
   }
 });
 
