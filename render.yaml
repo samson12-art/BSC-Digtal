@@ -12,6 +12,10 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
+      # Prisma uses this direct connection for `prisma db push` during builds.
+      # Runtime queries continue to use DATABASE_URL through the pooler.
+      - key: DIRECT_URL
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
