@@ -694,6 +694,8 @@ Create a `.env` file in the `backend/` directory:
 ```env
 # Database
 DATABASE_URL="postgresql://username:password@localhost:5432/bsc_db"
+# For a local database, this can be the same as DATABASE_URL.
+DIRECT_URL="postgresql://username:password@localhost:5432/bsc_db"
 
 # Authentication
 JWT_SECRET="your-secure-random-secret-key"
@@ -754,6 +756,7 @@ After seeding, the following accounts are available:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `DATABASE_URL` | Yes | — | PostgreSQL connection string |
+| `DIRECT_URL` | Yes | — | Direct PostgreSQL connection for Prisma schema commands; use the same value as `DATABASE_URL` locally, or the non-pooled URL with Supabase. |
 | `JWT_SECRET` | Yes | — | Secret key for JWT signing |
 | `JWT_EXPIRES_IN` | No | `7d` | Token expiration duration |
 | `PORT` | No | `5000` | Backend server port |

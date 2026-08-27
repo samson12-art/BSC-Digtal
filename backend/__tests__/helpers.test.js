@@ -36,8 +36,12 @@ describe('Helper Functions', () => {
   });
 
   describe('getNextReviewerRole', () => {
-    it('should return DEPARTMENT_MANAGER for EMPLOYEE', () => {
-      expect(getNextReviewerRole('EMPLOYEE')).toBe('DEPARTMENT_MANAGER');
+    it('should return DIVISION_MANAGER for EMPLOYEE', () => {
+      expect(getNextReviewerRole('EMPLOYEE')).toBe('DIVISION_MANAGER');
+    });
+
+    it('should return DEPARTMENT_MANAGER for DIVISION_MANAGER', () => {
+      expect(getNextReviewerRole('DIVISION_MANAGER')).toBe('DEPARTMENT_MANAGER');
     });
 
     it('should return EXECUTIVE_MANAGER for DEPARTMENT_MANAGER', () => {
