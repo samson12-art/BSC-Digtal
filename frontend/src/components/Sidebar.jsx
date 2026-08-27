@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, FileText, ClipboardCheck, BarChart3, Users, Building2, Bell, Shield, Settings, X, Hexagon } from 'lucide-react';
+import { LayoutDashboard, FileText, ClipboardCheck, BarChart3, Users, Building2, GitBranch, Bell, Shield, Settings, X, Hexagon } from 'lucide-react';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', roles: null },
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/reports', icon: BarChart3, label: 'Reports', roles: null },
   { to: '/users', icon: Users, label: 'Users', roles: ['CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER', 'BOARD_MEMBER'] },
   { to: '/departments', icon: Building2, label: 'Departments', roles: ['CEO', 'EXECUTIVE_MANAGER', 'BOARD_MEMBER'] },
+  { to: '/divisions', icon: GitBranch, label: 'Divisions', roles: ['CEO', 'EXECUTIVE_MANAGER'] },
   { to: '/notifications', icon: Bell, label: 'Notifications', roles: null },
   { to: '/audit', icon: Shield, label: 'Audit Trail', roles: ['CEO', 'EXECUTIVE_MANAGER', 'BOARD_MEMBER'] },
   { to: '/settings', icon: Settings, label: 'Settings', roles: null },

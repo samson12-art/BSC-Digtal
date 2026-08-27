@@ -98,6 +98,60 @@ describe('Departments Routes', () => {
   });
 });
 
+describe('Divisions Routes', () => {
+  const ceoToken = jwt.sign({ userId: 'ceo-1', role: 'CEO' }, process.env.JWT_SECRET);
+  const departmentId = '11111111-1111-4111-8111-111111111111';
+  const mockCEO = {
+    id: 'ceo-1', firstName: 'CEO', lastName: 'One', role: 'CEO',
+    departmentId: null, managerId: null, isActive: true, department: null, manager: null,
+  };
+  const mockDivision = {
+    id: '22222222-2222-4222-8222-222222222222', name: 'Corporate Claims Division',
+    description: 'Manages corporate claims', departmentId,
+    department: { id: departmentId, name: 'Claims' }, _count: { employees: 0 },
+  };
+
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it('returns divisions for an authenticated user', async () => {
+    prisma.user.findUnique.mockResolvedValue(mockCEO);
+    prisma.division.findMany.mockResolvedValue([mockDivision]);
+
+    const res = await request(app).get('/api/divisions').set('Authorization', `Bearer ${ceoToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body[0].name).toBe('Corporate Claims Division');
+  });
+
+  it('creates a division for a valid department as CEO', async () => {
+    prisma.user.findUnique.mockResolvedValue(mockCEO);
+    prisma.department.findUnique.mockResolvedValue({ id: departmentId });
+    prisma.division.create.mockResolvedValue(mockDivision);
+    prisma.auditLog.create.mockResolvedValue({});
+
+    const res = await request(app)
+      .post('/api/divisions')
+      .set('Authorization', `Bearer ${ceoToken}`)
+      .send({ name: 'Corporate Claims Division', departmentId, description: 'Manages corporate claims' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.departmentId).toBe(departmentId);
+  });
+
+  it('rejects a division assigned to a nonexistent department', async () => {
+    prisma.user.findUnique.mockResolvedValue(mockCEO);
+    prisma.department.findUnique.mockResolvedValue(null);
+
+    const res = await request(app)
+      .post('/api/divisions')
+      .set('Authorization', `Bearer ${ceoToken}`)
+      .send({ name: 'Corporate Claims Division', departmentId });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Selected department does not exist.');
+  });
+});
+
 describe('Approvals Routes', () => {
   const departmentManagerToken = jwt.sign({ userId: 'mgr-1', role: 'DEPARTMENT_MANAGER' }, process.env.JWT_SECRET);
   const ceoToken = jwt.sign({ userId: 'ceo-1', role: 'CEO' }, process.env.JWT_SECRET);

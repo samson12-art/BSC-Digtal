@@ -98,7 +98,7 @@ router.post('/oauth/exchange', [body('code').isString().notEmpty().withMessage('
   try {
     const code = jwt.verify(req.body.code, process.env.JWT_SECRET);
     if (code.type !== 'oauth-code') return res.status(400).json({ error: 'Invalid sign-in code' });
-    const user = await prisma.user.findUnique({ where: { id: code.userId }, include: { department: true, manager: true } });
+    const user = await prisma.user.findUnique({ where: { id: code.userId }, include: { department: true, division: true, manager: true } });
     if (!user || !user.isActive) return res.status(401).json({ error: 'Your account is no longer active' });
     const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
     await createAuditLog(user.id, `${user.firstName} ${user.lastName}`, 'LOGIN', 'User', user.id, { method: 'oauth' }, req.ip);
@@ -116,7 +116,7 @@ router.post('/login', [
 ], async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { email }, include: { department: true, manager: true } });
+    const user = await prisma.user.findUnique({ where: { email }, include: { department: true, division: true, manager: true } });
     if (!user || !user.isActive) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -265,7 +265,7 @@ router.get('/me', authenticate, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      include: { department: true, manager: { select: { id: true, firstName: true, lastName: true, role: true } } }
+      include: { department: true, division: true, manager: { select: { id: true, firstName: true, lastName: true, role: true } } }
     });
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);

@@ -51,6 +51,20 @@ model Department {
 
   employees    User[]
   bscPlans     BSCPlan[]
+  divisions    Division[]
+}
+
+model Division {
+  id           String     @id @default(uuid())
+  name         String
+  description  String?
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  employees    User[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([departmentId, name])
 }
 
 model User {
@@ -64,6 +78,8 @@ model User {
   role           Role
   departmentId   String?
   department     Department? @relation(fields: [departmentId], references: [id])
+  divisionId     String?
+  division       Division?   @relation(fields: [divisionId], references: [id])
   managerId      String?
   manager        User?     @relation("ReportingHierarchy", fields: [managerId], references: [id])
   directReports  User[]    @relation("ReportingHierarchy")

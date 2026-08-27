@@ -13,6 +13,7 @@ import PendingReviews from './pages/PendingReviews';
 import ReportsPage from './pages/ReportsPage';
 import UsersPage from './pages/UsersPage';
 import DepartmentsPage from './pages/DepartmentsPage';
+import DivisionsPage from './pages/DivisionsPage';
 import NotificationsPage from './pages/NotificationsPage';
 import AuditTrailPage from './pages/AuditTrailPage';
 import SettingsPage from './pages/SettingsPage';
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="reports" element={<ReportsPage />} />
         <Route path="users" element={<ProtectedRoute roles={['CEO', 'EXECUTIVE_MANAGER', 'DEPARTMENT_MANAGER', 'DIVISION_MANAGER', 'BOARD_MEMBER']}><UsersPage /></ProtectedRoute>} />
         <Route path="departments" element={<ProtectedRoute roles={['CEO', 'EXECUTIVE_MANAGER', 'BOARD_MEMBER']}><DepartmentsPage /></ProtectedRoute>} />
+        <Route path="divisions" element={<ProtectedRoute roles={['CEO', 'EXECUTIVE_MANAGER']}><DivisionsPage /></ProtectedRoute>} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="audit" element={<ProtectedRoute roles={['CEO', 'EXECUTIVE_MANAGER', 'BOARD_MEMBER']}><AuditTrailPage /></ProtectedRoute>} />
         <Route path="settings" element={<SettingsPage />} />

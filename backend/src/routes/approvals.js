@@ -106,10 +106,16 @@ router.post('/:planId/submit', authenticate, async (req, res) => {
     };
     const reviewerRole = reviewerRoleMap[req.user.role];
     if (reviewerRole) {
-      const reviewers = await prisma.user.findMany({ where: { role: reviewerRole, isActive: true } });
+      const reviewerWhere = { role: reviewerRole, isActive: true };
+      if (reviewerRole === 'DIVISION_MANAGER' && req.user.divisionId) reviewerWhere.divisionId = req.user.divisionId;
+      if (reviewerRole === 'DEPARTMENT_MANAGER') reviewerWhere.departmentId = req.user.departmentId;
+      const reviewers = await prisma.user.findMany({ where: reviewerWhere });
       for (const reviewer of reviewers) {
-        const shouldNotify = ['DIVISION_MANAGER', 'DEPARTMENT_MANAGER'].includes(reviewerRole) && reviewer.departmentId === req.user.departmentId ||
-          !['DIVISION_MANAGER', 'DEPARTMENT_MANAGER'].includes(reviewerRole);
+        const shouldNotify = reviewerRole === 'DIVISION_MANAGER'
+          ? reviewer.divisionId === req.user.divisionId
+          : reviewerRole === 'DEPARTMENT_MANAGER'
+            ? reviewer.departmentId === req.user.departmentId
+            : true;
         if (shouldNotify || reviewers.length <= 3) {
           await createNotification(reviewer.id, 'Plan Pending Review', `${req.user.firstName} ${req.user.lastName} submitted "${plan.title}" for your review`, 'REVIEW_REQUIRED', `/reviews`);
         }

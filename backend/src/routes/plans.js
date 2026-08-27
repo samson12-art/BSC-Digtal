@@ -219,7 +219,12 @@ router.post('/:id/comments', authenticate, [
 router.get('/pending-reviews/all', authenticate, authorize('DIVISION_MANAGER', 'DEPARTMENT_MANAGER', 'EXECUTIVE_MANAGER', 'CEO'), async (req, res) => {
   try {
     let where = { status: 'SUBMITTED' };
-    if (['DEPARTMENT_MANAGER', 'DIVISION_MANAGER'].includes(req.user.role)) {
+    if (req.user.role === 'DIVISION_MANAGER') {
+      where = {
+        owner: { divisionId: req.user.divisionId || '__no_division_assigned__' },
+        status: { in: ['SUBMITTED', 'UNDER_REVIEW'] }
+      };
+    } else if (req.user.role === 'DEPARTMENT_MANAGER') {
       where.OR = [
         { departmentId: req.user.departmentId, status: 'SUBMITTED' },
         { departmentId: req.user.departmentId, status: 'UNDER_REVIEW' }
