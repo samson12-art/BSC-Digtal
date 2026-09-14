@@ -9,10 +9,11 @@ on:
 env:
   NODE_VERSION: '20'
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bsc_test
+  DIRECT_URL: postgresql://postgres:postgres@localhost:5432/bsc_test
 
 jobs:
-  lint-and-typecheck:
-    name: Lint & Type Check
+  prepare-dependencies:
+    name: Prepare Dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +27,7 @@ jobs:
   test-backend:
     name: Backend Tests
     runs-on: ubuntu-latest
-    needs: lint-and-typecheck
+    needs: prepare-dependencies
     services:
       postgres:
         image: postgres:16
@@ -60,7 +61,7 @@ jobs:
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
-    needs: lint-and-typecheck
+    needs: prepare-dependencies
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
